@@ -5,7 +5,7 @@ import "./ByteUtils.sol";
 import "./ECRecovery.sol";
 import "./Math.sol";
 import "./Merkle.sol";
-import "./RLP.sol";
+import "./RLPDecode.sol";
 import "./PlasmaCore.sol";
 import "./PriorityQueue.sol";
 import "./PriorityQueueFactory.sol";
@@ -21,8 +21,8 @@ contract RootChain {
     using Bits for uint192;
     using Bits for uint256;
     using ByteUtils for bytes;
-    using RLP for bytes;
-    using RLP for RLP.RLPItem;
+    using RLPDecode for bytes;
+    using RLPDecode for RLPDecode.RLPItem;
     using PlasmaCore for bytes;
     using PlasmaCore for PlasmaCore.TransactionInput;
     using PlasmaCore for uint192;
@@ -489,7 +489,7 @@ contract RootChain {
         require(!flagged(inFlightExit.exitMap));
 
         // Separate the inputs transactions.
-        RLP.RLPItem[] memory splitInputTxs = _inputTxs.toRLPItem().toList();
+        RLPDecode.RLPItem[] memory splitInputTxs = _inputTxs.toRLPItem().toList();
         uint256 [] memory inputTxoPos = new uint256[](splitInputTxs.length);
 
         uint256 youngestInputTxoPos;

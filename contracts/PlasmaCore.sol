@@ -1,7 +1,8 @@
 pragma solidity ^0.4.0;
 
 import "./ByteUtils.sol";
-import "./RLP.sol";
+import "./RLPEncode.sol";
+import "./RLPDecode.sol";
 
 
 /**
@@ -10,8 +11,9 @@ import "./RLP.sol";
  */
 library PlasmaCore {
     using ByteUtils for bytes;
-    using RLP for bytes;
-    using RLP for RLP.RLPItem;
+    using RLPDecode for bytes;
+    using RLPDecode for RLPDecode.RLPItem;
+
 
 
     /*
@@ -55,25 +57,25 @@ library PlasmaCore {
         view
         returns (Transaction)
     {
-        RLP.RLPItem[] memory txList = _tx.toRLPItem().toList();
+        RLPDecode.RLPItem[] memory txList = _tx.toRLPItem().toList();
         require(txList.length == 2 || txList.length == 3);
         if (txList.length == 3){
            //ensuring that metadata isn't larger than 32 bytes
            txList[2].toBytes32();
         }
-        RLP.RLPItem[] memory inputs = txList[0].toList();
-        RLP.RLPItem[] memory outputs = txList[1].toList();
+        RLPDecode.RLPItem[] memory inputs = txList[0].toList();
+        RLPDecode.RLPItem[] memory outputs = txList[1].toList();
 
         Transaction memory decodedTx;
         for (uint i = 0; i < NUM_TXS; i++) {
-            RLP.RLPItem[] memory input = inputs[i].toList();
+            RLPDecode.RLPItem[] memory input = inputs[i].toList();
             decodedTx.inputs[i] = TransactionInput({
                 blknum: input[0].toUint(),
                 txindex: input[1].toUint(),
                 oindex: input[2].toUint()
             });
 
-            RLP.RLPItem[] memory output = outputs[i].toList();
+            RLPDecode.RLPItem[] memory output = outputs[i].toList();
             decodedTx.outputs[i] = TransactionOutput({
                 owner: output[0].toAddress(),
                 token: output[1].toAddress(),

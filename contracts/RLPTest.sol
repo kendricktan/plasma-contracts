@@ -1,6 +1,6 @@
 pragma solidity ^0.4.0;
 
-import "./RLP.sol";
+import "./RLPDecode.sol";
 
 
 /**
@@ -13,11 +13,11 @@ contract RLPTest {
         view
         returns (uint256, address, address)
     {
-        var txList = RLP.toList(RLP.toRLPItem(tx_bytes));
+        var txList = RLPDecode.toList(RLPDecode.toRLPItem(tx_bytes));
         return (
-            RLP.toUint(txList[5]),
-            RLP.toAddress(txList[6]),
-            RLP.toAddress(txList[7])
+            RLPDecode.toUint(txList[5]),
+            RLPDecode.toAddress(txList[6]),
+            RLPDecode.toAddress(txList[7])
         );
     }
 
@@ -26,12 +26,12 @@ contract RLPTest {
         view
         returns (uint256, address, address, address)
     {
-        var txList = RLP.toList(RLP.toRLPItem(tx_bytes));
+        var txList = RLPDecode.toList(RLPDecode.toRLPItem(tx_bytes));
         return (
-            RLP.toUint(txList[7]),
-            RLP.toAddress(txList[8]),
-            RLP.toAddress(txList[9]),
-            RLP.toAddress(txList[10])
+            RLPDecode.toUint(txList[7]),
+            RLPDecode.toAddress(txList[8]),
+            RLPDecode.toAddress(txList[9]),
+            RLPDecode.toAddress(txList[10])
         );
     }
 }
