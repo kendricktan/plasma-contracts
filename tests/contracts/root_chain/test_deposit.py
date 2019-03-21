@@ -6,6 +6,15 @@ from plasma_core.transaction import Transaction
 from plasma_core.utils.merkle.fixed_merkle import FixedMerkle
 
 
+def test_playground(ethtester, testlang):
+    # owner, amount = testlang.accounts[0], 100
+    # deposit_id = testlang.deposit(owner, amount)
+
+    var = testlang.root_chain.playgroud(10)
+
+    assert b'\x12'
+
+
 def test_deposit_valid_values_should_succeed(ethtester, testlang):
     owner, amount = testlang.accounts[0], 100
     deposit_id = testlang.deposit(owner, amount)
