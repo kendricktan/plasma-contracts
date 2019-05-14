@@ -60,7 +60,7 @@ library PlasmaCore {
         require(txList.length == 2 || txList.length == 3);
 
         Transaction memory decodedTx;
-        if (txList.length == 3){
+        if (txList.length == 3) {
            //ensuring that metadata isn't larger than 32 bytes
            decodedTx.metadata = txList[2].toBytes32();
         }

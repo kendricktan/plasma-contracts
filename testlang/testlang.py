@@ -1,8 +1,7 @@
-import rlp
 from plasma_core.child_chain import ChildChain
 from plasma_core.account import EthereumAccount
 from plasma_core.block import Block
-from plasma_core.transaction import Transaction, TransactionOutput
+from plasma_core.transaction import Transaction
 from plasma_core.constants import MIN_EXIT_PERIOD, NULL_SIGNATURE, NULL_ADDRESS
 from plasma_core.utils.transactions import decode_utxo_id, encode_utxo_id
 from plasma_core.utils.address import address_to_hex
@@ -10,7 +9,9 @@ from plasma_core.utils.merkle.fixed_merkle import FixedMerkle
 import conftest
 
 
-IN_FLIGHT_PERIOD = MIN_EXIT_PERIOD // 2
+PREDICATE_VERSION = 1
+TX_OUTPUT_TYPE = 1
+CONSUMED_TRANSACTION_TYPE = 1
 
 
 def get_accounts(ethtester):
@@ -73,51 +74,6 @@ class PlasmaBlock(object):
     def __init__(self, root, timestamp):
         self.root = root
         self.timestamp = timestamp
-
-
-class InFlightExit(object):
-
-    def __init__(self, root_chain, in_flight_tx, exit_start_timestamp, exit_priority, exit_map, bond_owner,
-                 oldest_competitor):
-
-        self.root_chain = root_chain
-        self.in_flight_tx = in_flight_tx
-        self.exit_start_timestamp = exit_start_timestamp
-        self.exit_priority = exit_priority
-        self.exit_map = exit_map
-        self.bond_owner = bond_owner
-        self.oldest_competitor = oldest_competitor
-        self.inputs = {}
-        self.outputs = {}
-
-    @property
-    def challenge_flag_set(self):
-        return self.root_chain.flagged(self.exit_start_timestamp)
-
-    def get_input(self, index):
-        input_info = self.inputs.get(index)
-        if not input_info:
-            input_info = TransactionOutput(*self.root_chain.getInFlightExitOutput(self.in_flight_tx.encoded, index))
-            input_info.owner = address_to_hex(input_info.owner)
-            self.inputs[index] = input_info
-        return input_info
-
-    def get_output(self, index):
-        assert index in range(4)
-        return self.get_input(index + 4)
-
-    def input_piggybacked(self, index):
-        return (self.exit_map >> index & 1) == 1
-
-    def output_piggybacked(self, index):
-        assert index in range(4)
-        return self.input_piggybacked(index + 4)
-
-    def input_blocked(self, index):
-        return self.input_piggybacked(index + 8)
-
-    def output_blocked(self, index):
-        return self.input_blocked(index + 4)
 
 
 class TestingLanguage(object):
@@ -237,13 +193,6 @@ class TestingLanguage(object):
             input_index = 3
         exit_id = self.get_standard_exit_id(output_id)
         self.root_chain.challengeStandardExit(exit_id, spend_tx.encoded, input_index, signature)
-
-    def start_in_flight_exit(self, tx_id, bond=None, sender=None):
-        if sender is None:
-            sender = self.accounts[0]
-        (encoded_spend, encoded_inputs, proofs, signatures) = self.get_in_flight_exit_info(tx_id)
-        bond = bond if bond is not None else self.root_chain.inFlightExitBond()
-        self.root_chain.startInFlightExit(encoded_spend, encoded_inputs, proofs, signatures, value=bond, sender=sender.key)
 
     def create_utxo(self, token=NULL_ADDRESS):
         class Utxo(object):
@@ -375,43 +324,12 @@ class TestingLanguage(object):
 
         self.ethtester.chain.head_state.timestamp += amount
 
-    def get_in_flight_exit_info(self, tx_id, spend_tx=None):
-        if spend_tx is None:
-            spend_tx = self.child_chain.get_transaction(tx_id)
-        input_txs = []
-        proofs = b''
-        signatures = b''
-        for i in range(0, len(spend_tx.inputs)):
-            tx_input = spend_tx.inputs[i]
-            (blknum, _, _) = decode_utxo_id(tx_input.identifier)
-            if blknum == 0:
-                continue
-            input_tx = self.child_chain.get_transaction(tx_input.identifier)
-            input_txs.append(input_tx)
-            proofs += self.get_merkle_proof(tx_input.identifier)
-            signatures += spend_tx.signatures[i]
-        encoded_inputs = rlp.encode(input_txs, rlp.sedes.CountableList(Transaction, 4))
-        return spend_tx.encoded, encoded_inputs, proofs, signatures
-
-    def get_in_flight_exit_id(self, tx_id):
-        spend_tx = self.child_chain.get_transaction(tx_id)
-        return self.root_chain.getInFlightExitId(spend_tx.encoded)
-
     def get_merkle_proof(self, tx_id):
         tx = self.child_chain.get_transaction(tx_id)
         (blknum, _, _) = decode_utxo_id(tx_id)
         block = self.child_chain.get_block(blknum)
         merkle = block.merklized_transaction_set
         return merkle.create_membership_proof(tx.encoded)
-
-    def piggyback_in_flight_exit_input(self, tx_id, input_index, key, bond=None):
-        spend_tx = self.child_chain.get_transaction(tx_id)
-        bond = bond if bond is not None else self.root_chain.piggybackBond()
-        self.root_chain.piggybackInFlightExit(spend_tx.encoded, input_index, sender=key, value=bond)
-
-    def piggyback_in_flight_exit_output(self, tx_id, output_index, key, bond=None):
-        assert output_index in range(4)
-        return self.piggyback_in_flight_exit_input(tx_id, output_index + 4, key, bond)
 
     @staticmethod
     def find_shared_input(tx_a, tx_b):
@@ -435,40 +353,15 @@ class TestingLanguage(object):
                 tx_b_input_index = i
         return tx_b_input_index
 
-    def challenge_in_flight_exit_not_canonical(self, in_flight_tx_id, competing_tx_id, key):
-        in_flight_tx = self.child_chain.get_transaction(in_flight_tx_id)
-        competing_tx = self.child_chain.get_transaction(competing_tx_id)
-        (in_flight_tx_input_index, competing_tx_input_index) = self.find_shared_input(in_flight_tx, competing_tx)
-        proof = self.get_merkle_proof(competing_tx_id)
-        signature = competing_tx.signatures[competing_tx_input_index]
-        self.root_chain.challengeInFlightExitNotCanonical(in_flight_tx.encoded, in_flight_tx_input_index, competing_tx.encoded, competing_tx_input_index, competing_tx_id, proof, signature, sender=key)
-
-    def respond_to_non_canonical_challenge(self, in_flight_tx_id, key):
-        in_flight_tx = self.child_chain.get_transaction(in_flight_tx_id)
-        proof = self.get_merkle_proof(in_flight_tx_id)
-        self.root_chain.respondToNonCanonicalChallenge(in_flight_tx.encoded, in_flight_tx_id, proof)
-
     def forward_to_period(self, period):
-        self.forward_timestamp((period - 1) * IN_FLIGHT_PERIOD)
+        self.forward_timestamp((period - 1) * MIN_EXIT_PERIOD)
 
-    def challenge_in_flight_exit_input_spent(self, in_flight_tx_id, spend_tx_id, key):
-        in_flight_tx = self.child_chain.get_transaction(in_flight_tx_id)
-        spend_tx = self.child_chain.get_transaction(spend_tx_id)
-        (in_flight_tx_input_index, spend_tx_input_index) = self.find_shared_input(in_flight_tx, spend_tx)
-        signature = spend_tx.signatures[spend_tx_input_index]
-        self.root_chain.challengeInFlightExitInputSpent(in_flight_tx.encoded, in_flight_tx_input_index, spend_tx.encoded, spend_tx_input_index, signature, sender=key)
+    def register_output_predicate(self, output_predicate):
+        self.root_chain.registerTxOutputPredicate(TX_OUTPUT_TYPE, CONSUMED_TRANSACTION_TYPE, output_predicate.address, PREDICATE_VERSION)
 
-    def challenge_in_flight_exit_output_spent(self, in_flight_tx_id, spending_tx_id, output_index, key):
-        in_flight_tx = self.child_chain.get_transaction(in_flight_tx_id)
-        spending_tx = self.child_chain.get_transaction(spending_tx_id)
-        in_flight_tx_output_id = in_flight_tx_id + output_index
-        spending_tx_input_index = self.find_input_index(in_flight_tx_output_id, spending_tx)
-        in_flight_tx_inclusion_proof = self.get_merkle_proof(in_flight_tx_id)
-        spending_tx_sig = spending_tx.signatures[spending_tx_input_index]
-        self.root_chain.challengeInFlightExitOutputSpent(in_flight_tx.encoded, in_flight_tx_output_id, in_flight_tx_inclusion_proof, spending_tx.encoded, spending_tx_input_index, spending_tx_sig, sender=key)
+    def register_exit_processor(self, exit_processor):
+        self.root_chain.registerExitProcessor(CONSUMED_TRANSACTION_TYPE, exit_processor.address, PREDICATE_VERSION)
 
-    def get_in_flight_exit(self, in_flight_tx_id):
-        in_flight_tx = self.child_chain.get_transaction(in_flight_tx_id)
-        exit_id = self.root_chain.getInFlightExitId(in_flight_tx.encoded)
-        exit_info = self.root_chain.inFlightExits(exit_id)
-        return InFlightExit(self.root_chain, in_flight_tx, *exit_info)
+    def register_exit_game(self, exit_game):
+        self.root_chain.registerExitGame(CONSUMED_TRANSACTION_TYPE, exit_game.address, PREDICATE_VERSION)
+

@@ -4,9 +4,9 @@ import "./ExitModel.sol";
 
 /**
 Centralized place to hold all Plasma storages.
-If we want to use proxy contract upgrade on the plasma layer,
+If we want to use proxy contract upgrade on the plasma layer, 
 we need to make the the order of storage declaration can be only appended.
-Put everything in a centralized place to avoid possible future crash.
+Put everything in a centralizec place to avoid possible future crash.
  */
 contract PlasmaStorage {
     /**
@@ -28,5 +28,5 @@ contract PlasmaStorage {
     /**
     Exit Game Registry
      */
-    mapping(bytes32 => address) private games;
+    mapping (bytes32 => address) private games;
 }

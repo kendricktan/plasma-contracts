@@ -11,9 +11,9 @@ See PlasmaStorage.sol for all gernalized storage map that need the functions.
 contract GeneralizedStorage is ExitGameRegistry, PlasmaStorage {
 
     function getBoolStorage(uint256 _txType, bytes32 _key) external view returns (bool) {
-        require(msg.sender == getExitGameContract(_txType));
+       /** require(msg.sender == getExitGameContract(_txType));
         bytes32 key = keccak256(abi.encodePacked(_txType, _key));
-        return boolStorage[key];
+        return boolStorage[key]; */
     }
 
     function setBoolStorage(uint256 _txType, bytes32 _key, bool _value) external {

@@ -35,7 +35,8 @@ class TransactionOutput(rlp.Serializable):
     fields = (
         ('owner', utils.address),
         ('token', utils.address),
-        ('amount', big_endian_int)
+        ('amount', big_endian_int),
+        #('output_type', big_endian_int)
     )
 
     def __init__(self, owner=NULL_ADDRESS, token=NULL_ADDRESS, amount=0):
@@ -52,20 +53,23 @@ class Transaction(rlp.Serializable):
     fields = (
         ('inputs', CountableList(TransactionInput, NUM_TXOS)),
         ('outputs', CountableList(TransactionOutput, NUM_TXOS)),
-        ('metadata', binary)
+        ('metadata', binary),
+        ('tx_type', big_endian_int),
     )
 
     def __init__(self,
                  inputs=[DEFAULT_INPUT] * NUM_TXOS,
                  outputs=[DEFAULT_OUTPUT] * NUM_TXOS,
                  metadata=None,
-                 signatures=[NULL_SIGNATURE] * NUM_TXOS):
+                 signatures=[NULL_SIGNATURE] * NUM_TXOS,
+                 tx_type=None):
         assert all(len(o) == 3 for o in outputs)
         padded_inputs = pad_list(inputs, self.DEFAULT_INPUT, self.NUM_TXOS)
         padded_outputs = pad_list(outputs, self.DEFAULT_OUTPUT, self.NUM_TXOS)
 
         self.inputs = [TransactionInput(*i) for i in padded_inputs]
         self.outputs = [TransactionOutput(*o) for o in padded_outputs]
+        self.tx_type = tx_type
         self.metadata = metadata
         self.signatures = signatures[:]
         self.spent = [False] * self.NUM_TXOS
@@ -92,7 +96,7 @@ class Transaction(rlp.Serializable):
     @staticmethod
     def serialize(obj):
         try:
-            cls = Transaction.exclude(['metadata']) if obj.metadata is None else Transaction
+            cls = Transaction.exclude(['metadata', 'tx_type']) if obj.metadata is None else Transaction
             field_value = [getattr(obj, field) for field, _ in cls.fields]
             ret = cls.get_sedes().serialize(field_value)
             return ret
