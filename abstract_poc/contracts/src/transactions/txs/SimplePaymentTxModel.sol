@@ -3,12 +3,12 @@ pragma solidity ^0.5.0;
 import "../TxInputModel.sol";
 import "../outputs/PaymentOutputModel.sol";
 
-library TxModel {
+library SimplePaymentTxModel {
     uint256 constant TX_TYPE = 1;
     uint256 constant MAX_INPUT = 1;
     uint256 constant MAX_OUPUT = 1;
 
-    using TxOutputModel for TxOutputModel.TxOutput;
+    using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
     struct ProofData {
         bytes signature;
@@ -21,7 +21,7 @@ library TxModel {
     struct Tx {
         uint256 txType;
         TxInputModel.TxInput[MAX_INPUT] inputs;
-        TxOutputModel.TxOutput[MAX_OUPUT] outputs;
+        PaymentOutputModel.TxOutput[MAX_OUPUT] outputs;
         ProofData proofData;
         MetaData metaData;
     }
@@ -45,7 +45,7 @@ library TxModel {
         return (true, "");
     }
 
-    function decode(bytes memory _tx) internal pure returns (TxModel.Tx memory){
+    function decode(bytes memory _tx) internal pure returns (SimplePaymentTxModel.Tx memory){
         // POC implement
         return DummyTxFactory.get();
     }
@@ -54,17 +54,22 @@ library TxModel {
 
 // temp code for POC testing
 library DummyTxFactory {
-    function get() internal pure returns (TxModel.Tx memory) {
+    function get() internal pure returns (SimplePaymentTxModel.Tx memory) {
         // dummy implement
         TxInputModel.TxInput[1] memory ins;
-        TxOutputModel.TxOutput[1] memory outs;
+        PaymentOutputModel.TxOutput[1] memory outs;
 
         TxInputModel.TxInput memory dummyTxIn = TxInputModel.TxInput(0, 0, 0);
-        TxOutputModel.TxOutput memory dummyTxOut = TxOutputModel.TxOutput(
-            1, TxOutputModel.TxOutputData(10, address(0), address(0)));
+        PaymentOutputModel.TxOutput memory dummyTxOut = PaymentOutputModel.TxOutput(
+            1, PaymentOutputModel.TxOutputData(10, address(0), address(0)));
 
         ins[0] = dummyTxIn;
         outs[0] = dummyTxOut;
-        return TxModel.Tx(TxModel.getTxType(), ins, outs, TxModel.ProofData(bytes("signature")), TxModel.MetaData(""));
+        return SimplePaymentTxModel.Tx(
+            SimplePaymentTxModel.getTxType(),
+            ins,
+            outs,
+            SimplePaymentTxModel.ProofData(bytes("signature")), SimplePaymentTxModel.MetaData("")
+        );
     }
 }

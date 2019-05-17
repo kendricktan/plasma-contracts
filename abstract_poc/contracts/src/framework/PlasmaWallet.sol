@@ -4,7 +4,7 @@ import "./PlasmaBlockController.sol";
 import "./utils/PlasmaCore.sol";
 import "./models/BlockModel.sol";
 import "./modifiers/ExitProcessorWhitelisted.sol";
-import {TxModel as DepositTx} from "../transactions/txs/SimplePaymentTxModel.sol";
+import {SimplePaymentTxModel as DepositTx} from "../transactions/txs/SimplePaymentTxModel.sol";
 
 contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockController {
     using DepositTx for DepositTx.Tx;

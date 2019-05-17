@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-library TxOutputModel {
+library PaymentOutputModel {
     uint256 constant OUTPUT_TYPE = 1;
 
     struct TxOutputData {
@@ -33,9 +33,9 @@ library TxOutputModel {
 }
 
 // temp code for POC testing
-library DummyOutputFactory {
-    function get() internal pure returns (TxOutputModel.TxOutput memory) {
+library DummyPaymentOutputFactory {
+    function get() internal pure returns (PaymentOutputModel.TxOutput memory) {
         // dummy implement
-        return TxOutputModel.TxOutput(1, TxOutputModel.TxOutputData(10, address(0), address(0)));
+        return PaymentOutputModel.TxOutput(1, PaymentOutputModel.TxOutputData(10, address(0), address(0)));
     }
 }

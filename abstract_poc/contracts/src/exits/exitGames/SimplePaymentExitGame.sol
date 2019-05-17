@@ -12,19 +12,20 @@ import "../../transactions/txs/SimplePaymentTxModel.sol";
  Using MoreVp, POC skiping IFE
  */
 contract SimplePaymentExitGame is BaseExitGame {
+    uint256 constant TX_TYPE = 1;
     uint8 STANDARD_EXIT_TYPE = 1;
     uint8 INFLIGHT_EXIT_TYPE = 2;
 
-    using TxOutputModel for TxOutputModel.TxOutput;
+    using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
-    constructor(address _framework, address _exitProcessor, uint256 _txType)
-        BaseExitGame(_framework, _exitProcessor, _txType) public {}
+    constructor(address _framework, address _exitProcessor)
+        BaseExitGame(_framework, _exitProcessor) public {}
 
     function startStandardExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof)
         external onlyFromFramework {
         //TODO: check inclusion proof
 
-        TxModel.Tx memory outputTx = TxModel.decode(_outputTx);
+        SimplePaymentTxModel.Tx memory outputTx = SimplePaymentTxModel.decode(_outputTx);
 
         uint256 exitId = uint(_utxoPos); // This does not work with IFE, temp for prototype
         uint256 exitableAt = block.timestamp; // Need to add a period, for prototype we make it insecure
@@ -44,7 +45,7 @@ contract SimplePaymentExitGame is BaseExitGame {
         });
 
         bytes memory exitDataInBytes = abi.encode(exitData);
-        framework.setBytesStorage(txType, bytes32(exitId), exitDataInBytes);
+        framework.setBytesStorage(TX_TYPE, bytes32(exitId), exitDataInBytes);
     }
 
     function challengeStandardExitOutputUsed(
@@ -55,16 +56,16 @@ contract SimplePaymentExitGame is BaseExitGame {
         uint8 _inputIndex
     ) external onlyFromFramework {
         uint256 exitId = uint256(_standardExitId);
-        bytes memory exitDataInBytes = framework.getBytesStorage(txType, bytes32(exitId));
+        bytes memory exitDataInBytes = framework.getBytesStorage(TX_TYPE, bytes32(exitId));
         SimplePaymentExitDataModel.Data memory exitData = abi.decode(exitDataInBytes, (SimplePaymentExitDataModel.Data));
 
         require(exitData.exitType == STANDARD_EXIT_TYPE, "The exit is not standard exit.");
         require(exitData.outputHash == keccak256(_output), "The output does not match the exit output");
 
-        OutputPredicate predicate = framework.getOutputPredicate(TxOutputModel.getOutputType(), _challengeTxType);
+        OutputPredicate predicate = framework.getOutputPredicate(PaymentOutputModel.getOutputType(), _challengeTxType);
         require(predicate.canUseTxOutput(_output, _challengeTx, _inputIndex), "The output is not able to be used in the challenge tx");
 
         exitData.exitable = false;
-        framework.setBytesStorage(txType, bytes32(exitId), abi.encode(exitData));
+        framework.setBytesStorage(TX_TYPE, bytes32(exitId), abi.encode(exitData));
     }
 }

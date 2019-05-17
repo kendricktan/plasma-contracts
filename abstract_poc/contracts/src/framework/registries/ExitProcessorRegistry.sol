@@ -18,14 +18,13 @@ contract ExitProcessorRegistry is PlasmaStorage, Operated {
     function upgradeExitProcessorTo(uint256 _txType, uint256 _version) public onlyOperator returns (address) {
         // TODO: check 2 week (or any safe period)
 
-        bytes32 key = keccak256(abi.encodePacked(_txType, _version));
-        address newAddress = exitProcessorsAllVersions[key];
+        address newAddress = getExitProcessorByVersion(_txType, _version);
         address oldAddress = exitProcessorsCurrentVersion[_txType];
-        
+
         exitProcessorToTxType[oldAddress] = 0;
         exitProcessorToTxType[newAddress] = _txType;
-        exitGamesCurrentVersion[_txType] = newAddress;
-        
+        exitProcessorsCurrentVersion[_txType] = newAddress;
+
         return newAddress;
     }
 

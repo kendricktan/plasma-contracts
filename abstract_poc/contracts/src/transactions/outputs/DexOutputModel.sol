@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-library TxOutputModel {
+library DexOutputModel {
     uint256 constant OUTPUT_TYPE = 2;
 
     struct TxOutputData {
@@ -25,9 +25,9 @@ library TxOutputModel {
 }
 
 // temp code for POC testing
-library DummyOutputFactory {
-    function get() internal pure returns (TxOutputModel.TxOutput memory) {
+library DummyDexOutputFactory {
+    function get() internal pure returns (DexOutputModel.TxOutput memory) {
         // dummy implement
-        return TxOutputModel.TxOutput(1, TxOutputModel.TxOutputData(10, address(0), address(0), address(0)));
+        return DexOutputModel.TxOutput(1, DexOutputModel.TxOutputData(10, address(0), address(0), address(0)));
     }
 }

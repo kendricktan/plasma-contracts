@@ -1,14 +1,14 @@
 pragma solidity ^0.5.0;
 
 import "../TxInputModel.sol";
-import {TxOutputModel as PaymentOutput} from "../outputs/PaymentOutputModel.sol";
-import {TxOutputModel as DexOutput} from "../outputs/DexOutputModel.sol";
+import "../outputs/PaymentOutputModel.sol";
+import "../outputs/DexOutputModel.sol";
 
-library TxModel {
+library FundingTxModel {
     uint256 constant TX_TYPE = 2;
 
-    using DexOutput for DexOutput.TxOutput;
-    using PaymentOutput for PaymentOutput.TxOutput;
+    using DexOutputModel for DexOutputModel.TxOutput;
+    using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
     struct ProofData {
         bytes signature;
@@ -21,7 +21,7 @@ library TxModel {
     struct Tx {
         uint256 txType;
         TxInputModel.TxInput[1] inputs;
-        DexOutput.TxOutput[1] dexOutputs;
+        DexOutputModel.TxOutput[1] dexOutputs;
         ProofData proofData;
         MetaData metaData;
     }
@@ -34,18 +34,23 @@ library TxModel {
 
 // temp code for POC testing
 library DummyTxFactory {
-    function get() internal pure returns (TxModel.Tx memory) {
+    function get() internal pure returns (FundingTxModel.Tx memory) {
         // dummy implement
         TxInputModel.TxInput[1] memory ins;
-        DexOutput.TxOutput[1] memory dexOutputs;
+        DexOutputModel.TxOutput[1] memory dexOutputs;
 
         TxInputModel.TxInput memory dummyTxIn = TxInputModel.TxInput(1, 0, 0);
-        DexOutput.TxOutput memory dummyDexOutput = DexOutput.TxOutput(
-            1, DexOutput.TxOutputData(10, address(0), address(0), address(0)));
+        DexOutputModel.TxOutput memory dummyDexOutput = DexOutputModel.TxOutput(
+            1, DexOutputModel.TxOutputData(10, address(0), address(0), address(0)));
 
         ins[0] = dummyTxIn;
         dexOutputs[0] = dummyDexOutput;
 
-        return TxModel.Tx(TxModel.getTxType(), ins, dexOutputs, TxModel.ProofData(bytes("signature")), TxModel.MetaData(""));
+        return FundingTxModel.Tx(
+            FundingTxModel.getTxType(),
+            ins,
+            dexOutputs,
+            FundingTxModel.ProofData(bytes("signature")), FundingTxModel.MetaData("")
+        );
     }
 }

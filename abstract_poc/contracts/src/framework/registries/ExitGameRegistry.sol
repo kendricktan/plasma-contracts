@@ -22,8 +22,7 @@ contract ExitGameRegistry is PlasmaStorage, Operated {
 
     // use this function to upgrade, need to check the whether the version is registered > 2 weeks
     function upgradeExitGameTo(uint256 _txType, uint256 _version) public onlyOperator returns (address) {
-        bytes32 key = keccak256(abi.encodePacked(_txType, _version));
-        address newAddress = exitGamesAllVersions[key];
+        address newAddress = getExitGameByVersion(_txType, _version);
         address oldAddress = exitGamesCurrentVersion[_txType];
 
         exitGameToTxType[oldAddress] = 0;

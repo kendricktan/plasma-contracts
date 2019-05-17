@@ -5,16 +5,14 @@ import "../../framework/PlasmaFramework.sol";
 contract BaseExitGame {
     PlasmaFramework framework;
     address exitProcessor;
-    uint256 txType;
 
     modifier onlyFromFramework() {
         require(msg.sender == address(framework), "Not being called from the PlasmaFramework");
         _;
     }
 
-    constructor(address _framework, address _exitProcessor, uint256 _txType) public {
+    constructor(address _framework, address _exitProcessor) public {
         framework = PlasmaFramework(_framework);
         exitProcessor = _exitProcessor;
-        txType = _txType;
     }
 }

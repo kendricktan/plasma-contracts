@@ -5,15 +5,13 @@ import "../../framework/interfaces/ExitProcessor.sol";
 
 contract BaseExitProcessor is ExitProcessor {
     PlasmaFramework framework;
-    uint256 txType;
 
     modifier onlyFromFramework() {
         require(msg.sender == address(framework), "Not being called from the PlasmaFramework");
         _;
     }
 
-    constructor(address _framework, uint256 _txType) public {
+    constructor(address _framework) public {
         framework = PlasmaFramework(_framework);
-        txType = _txType;
     }
 }
