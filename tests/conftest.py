@@ -70,17 +70,36 @@ def get_contract(ethtester, ethutils):
 
 
 @pytest.fixture
-def root_chain(ethtester, get_contract):
-    return initialized_contract(ethtester, get_contract, EXIT_PERIOD)
+def plasma_framework(ethtester, get_contract):
+    return initialized_contract(ethtester, get_contract)
 
 
-def initialized_contract(ethtester, get_contract, exit_period):
+@pytest.fixture
+def output_predicate(ethtester, get_contract):
+    return deploy_contract(ethtester, get_contract, 'NormalOutputToNormalTxPredicate')
+
+
+@pytest.fixture
+def exit_game(ethtester, plasma_framework, get_contract):
+    return deploy_contract(ethtester, get_contract, 'MVPGame', args=(plasma_framework.address,))
+
+
+@pytest.fixture
+def exit_processor(ethtester, plasma_framework, get_contract):
+    return deploy_contract(ethtester, get_contract, 'MVPExitProcessor', args=(plasma_framework.address,))
+
+
+def deploy_contract(ethtester, get_contract, contract, args=()):
+    contract = get_contract(contract, args=args)
+    ethtester.chain.mine()
+    return contract
+
+
+def initialized_contract(ethtester, get_contract):
     pql = get_contract('PriorityQueueLib')
     pqf = get_contract('PriorityQueueFactory', libraries={'PriorityQueueLib': pql.address})
     ethtester.chain.mine()
-    contract = get_contract('RootChain', libraries={'PriorityQueueFactory': pqf.address})
-    ethtester.chain.mine()
-    contract.init(exit_period, sender=ethtester.k0)
+    contract = get_contract('PlasmaFramework', libraries={'PriorityQueueFactory': pqf.address})
     ethtester.chain.mine()
     return contract
 
@@ -97,13 +116,12 @@ def token(ethtester, get_contract):
 
 
 @pytest.fixture
-def testlang(root_chain, ethtester):
-    return TestingLanguage(root_chain, ethtester)
-
-
-@pytest.fixture
-def root_chain_short_exit_period(ethtester, get_contract):
-    return initialized_contract(ethtester, get_contract, 0)
+def testlang(plasma_framework, output_predicate, exit_game, exit_processor, ethtester):
+    testlang = TestingLanguage(plasma_framework, ethtester)
+    testlang.register_output_predicate(output_predicate)
+    testlang.register_exit_processor(exit_processor)
+    testlang.register_exit_game(exit_game)
+    return testlang
 
 
 @pytest.fixture
