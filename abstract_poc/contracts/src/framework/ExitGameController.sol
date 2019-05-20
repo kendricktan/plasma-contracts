@@ -18,8 +18,8 @@ contract ExitGameController is PlasmaStorage, ExitGameRegistry, ExitGameWhitelis
      * eg. for a function "f(uint 256)", this value should be abi.encodeWithSignature("f(uint256)", var1)
      */
     function runExitGame(uint256 _txType, bytes memory _encodedFunctionData) public {
-        (bool success,) = getExitGame(_txType).call(_encodedFunctionData);
-        require(success, "runExitGame in Exit Game contract failed.");
+        (bool success, bytes memory data) = getExitGame(_txType).call(_encodedFunctionData);
+        require(success, string(abi.encodePacked("runExitGame in Exit Game contract failed with data: [ ", string(data), " ]")));
     }
 
     function enqueue(uint192 _priority, ExitModel.Exit memory _exit) public onlyExitGame returns (uint256) {

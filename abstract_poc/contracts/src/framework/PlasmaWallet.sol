@@ -1,7 +1,6 @@
 pragma solidity ^0.5.0;
 
 import "./PlasmaBlockController.sol";
-import "./utils/PlasmaCore.sol";
 import "./models/BlockModel.sol";
 import "./modifiers/ExitProcessorWhitelisted.sol";
 import {SimplePaymentTxModel as DepositTx} from "../transactions/txs/SimplePaymentTxModel.sol";

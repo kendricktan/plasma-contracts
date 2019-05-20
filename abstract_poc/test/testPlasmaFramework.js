@@ -51,7 +51,7 @@ contract("PlasmaFramework", accounts => {
         await plasma.registerExitGame(1, exitGame.address, 1);
         await plasma.upgradeExitGameTo(1, 1);
 
-        const functionSignature = web3.eth.abi.encodeFunctionCall({
+        const startStandardExit = web3.eth.abi.encodeFunctionCall({
             name: 'startStandardExit',
             type: 'function',
             inputs: [{
@@ -65,8 +65,77 @@ contract("PlasmaFramework", accounts => {
                 name: '_outputTxInclusionProof'
             }]
         }, [123, web3.utils.fromUtf8("dummy tx"), web3.utils.fromUtf8("dummy proof")])
-        await plasma.runExitGame(1, functionSignature);
+        await plasma.runExitGame(1, startStandardExit);
         
         //TODO: add assert on storage change
+        EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
+        const exitDataOrigin = await plasma.getBytesStorage(1, EXIT_ID);
+        const decodedExitDataOrigin = web3.eth.abi.decodeParameter({
+            SimplePaymentExitDataModel: {
+                exitId: 'uint256',
+                exitType: 'uint8',
+                exitable: 'bool',
+                outputHash: 'bytes32',
+                token: 'address',
+                exitTarget: 'address',
+                amount: 'uint256'
+            }
+        }, exitDataOrigin);
+
+        assert(decodedExitDataOrigin.exitable, "exit started and exitable");
+
+        const dummyOutput = web3.eth.abi.encodeParameter({
+            TxOutput: {
+                outputType: 'uint256',
+                outputData: {
+                    amount: 'uint256',
+                    owner: 'address',
+                    token: 'address',
+                },
+            }
+        }, {
+            outputType: 1, 
+            outputData: {
+                amount: 10, 
+                owner: '0x0000000000000000000000000000000000000000', 
+                token: '0x0000000000000000000000000000000000000000'
+            }
+        });
+
+        const challengeCall = web3.eth.abi.encodeFunctionCall({
+            name: 'challengeStandardExitOutputUsed',
+            type: 'function',
+            inputs: [{
+                type: 'uint192',
+                name: '_standardExitId'
+            },{
+                type: 'bytes',
+                name: '_output'
+            },{
+                type: 'bytes',
+                name: '_challengeTx'
+            }, {
+                type: 'uint256',
+                name: '_challengeTxType'
+            }, {
+                type: 'uint8',
+                name: '_inputIndex'
+            }]
+        }, [123, dummyOutput, web3.utils.fromUtf8("dummy tx"), 1, 0])
+        await plasma.runExitGame(1, challengeCall);
+
+        const exitDataChallenged = await plasma.getBytesStorage(1, EXIT_ID);
+        const decodedExitDataChallenged = web3.eth.abi.decodeParameter({
+            SimplePaymentExitDataModel: {
+                exitId: 'uint256',
+                exitType: 'uint8',
+                exitable: 'bool',
+                outputHash: 'bytes32',
+                token: 'address',
+                exitTarget: 'address',
+                amount: 'uint256'
+            }
+        }, exitDataChallenged);
+        assert(decodedExitDataChallenged.exitable === false, "successfully challenged");
     });
 })
