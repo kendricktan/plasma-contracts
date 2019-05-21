@@ -5,6 +5,8 @@ const PaymentOutputModel = artifacts.require("PaymentOutputModel");
 const SimplePaymentExitGame = artifacts.require("SimplePaymentExitGame");
 const SimplePaymentExitProcessor = artifacts.require("SimplePaymentExitProcessor");
 
+const SimplePaymentExitGame = artifacts.require("FundingExitGame");
+
 module.exports = async (deployer) => {
   deployer.deploy(PriorityQueueLib);
   deployer.link(PriorityQueueLib, PlasmaFramework);
