@@ -24,7 +24,7 @@ contract PlasmaStorage {
     uint256 public nextChildBlock;
     uint256 public nextDepositBlock;
 
-    PriorityQueue queue;
+    PriorityQueue public queue;
 
     bytes32[16] zeroHashes;
 

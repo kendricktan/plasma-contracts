@@ -32,18 +32,27 @@ contract ExitGameController is PlasmaStorage, ExitGameRegistry, ExitGameWhitelis
         return uniquePriority;
     }
 
-    function processExits() external {
+    function processExits() public {
+        require(queue.currentSize() > 0, "queue is empty");
         uint256 uniquePriority = queue.getMin();
+        require(uniquePriority != 0, "uniquePriority should not be 0");
         ExitModel.Exit memory exit = exits[uniquePriority];
+        require(exit.exitableAt != 0, "exit for the priority not found");
 
-        while(exit.exitableAt < block.timestamp) {
+        while(exit.exitableAt <= block.timestamp) {
             ExitProcessor processor = ExitProcessor(exit.exitProcessor);
+            require(exit.exitProcessor != address(0), "exit processor not exits");
+
             processor.processExit(exit.exitId);
 
             queue.delMin();
 
-            uniquePriority = queue.getMin();
-            exit = exits[uniquePriority];
+            if(queue.currentSize() > 0) {
+                uniquePriority = queue.getMin();
+                exit = exits[uniquePriority];
+            } else {
+                break;
+            }
         }
     }
 }

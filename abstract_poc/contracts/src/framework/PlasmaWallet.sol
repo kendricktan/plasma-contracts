@@ -18,7 +18,7 @@ contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockCon
 
         require(nextDepositBlock < CHILD_BLOCK_INTERVAL, "Exceed limit of deposits per child block interval");
 
-        DepositTx.Tx memory decodedTx = DepositTx.decode(_depositTx);
+        DepositTx.Tx memory decodedTx = DepositTx.decode(_depositTx); // Currently would return a hard-coded tx
 
         (bool isFormatValid, string memory message) = decodedTx.checkFormat();
         require(isFormatValid, message);

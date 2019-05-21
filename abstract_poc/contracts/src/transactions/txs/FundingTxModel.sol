@@ -29,6 +29,11 @@ library FundingTxModel {
     function getTxType() internal pure returns (uint256) {
         return TX_TYPE;
     }
+
+    function decode(bytes memory _tx) internal pure returns (FundingTxModel.Tx memory){
+        // POC implement
+        return DummyTxFactory.get();
+    }
 }
 
 

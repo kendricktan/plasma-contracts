@@ -1,7 +1,13 @@
+const {advanceTimeAndBlock} = require('./testllb/advanceTime.js');
+
+const PriorityQueue = artifacts.require("PriorityQueue");
 const PlasmaFramework = artifacts.require("PlasmaFramework");
 const PaymentOutputToPaymentTxPredicate = artifacts.require("PaymentOutputToPaymentTxPredicate");
 const SimplePaymentExitGame = artifacts.require("SimplePaymentExitGame");
 const SimplePaymentExitProcessor = artifacts.require("SimplePaymentExitProcessor");
+const FundingExitGame = artifacts.require("FundingExitGame");
+const FundingExitProcessor = artifacts.require("FundingExitProcessor");
+
 
 contract("PlasmaFramework", accounts => {
     it("should be able to deploy", async () => {
@@ -14,6 +20,20 @@ contract("PlasmaFramework", accounts => {
         await plasma.deposit(web3.utils.fromUtf8("dummy bytes"));
         const nextDepositBlock = parseInt(await plasma.nextDepositBlock(), 10);
         assert(nextDepositBlock === 2, `nextDepositBlock should be 2 instead of: [${nextDepositBlock}]`);
+    });
+
+    it("should be able to submit block", async () => {
+        const plasma = await PlasmaFramework.deployed();
+        await plasma.submitBlock(web3.utils.fromUtf8("dummy bytes"));
+        const nextChildBlock = parseInt(await plasma.nextChildBlock(), 10);
+        assert(nextChildBlock === 2000, `nextChildBlock should be 2000 instead of: [${nextChildBlock}]`);
+    });
+
+    it("should be able to get priority queue", async () => {
+        const plasma = await PlasmaFramework.deployed();
+        const queue = await PriorityQueue.at(await plasma.queue());
+        const queueSize = parseInt(await queue.currentSize(), 10);
+        assert(queueSize === 0, `queue size should be init to 0 instead of ${queueSize}`);
     });
 
     it("should be able to deploy and register predicate and exit contracts", async () => {
@@ -36,7 +56,7 @@ contract("PlasmaFramework", accounts => {
         assert(await plasma.getExitGame(1) === exitGame.address, 'exitGame failed register');
     });
 
-    it("should be able to proxy to exit game contracts", async () => {
+    it("should be able to start exit and challenge with simple payment tx", async () => {
         const plasma = await PlasmaFramework.deployed();
         const predicate = await PaymentOutputToPaymentTxPredicate.deployed();
         const exitGame = await SimplePaymentExitGame.deployed();
@@ -67,8 +87,7 @@ contract("PlasmaFramework", accounts => {
         }, [123, web3.utils.fromUtf8("dummy tx"), web3.utils.fromUtf8("dummy proof")])
         await plasma.runExitGame(1, startStandardExit);
         
-        //TODO: add assert on storage change
-        EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
+        const EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
         const exitDataOrigin = await plasma.getBytesStorage(1, EXIT_ID);
         const decodedExitDataOrigin = web3.eth.abi.decodeParameter({
             SimplePaymentExitDataModel: {
@@ -137,5 +156,73 @@ contract("PlasmaFramework", accounts => {
             }
         }, exitDataChallenged);
         assert(decodedExitDataChallenged.exitable === false, "successfully challenged");
+
+        const tx = await plasma.processExits();
+        
+        const queue = await PriorityQueue.at(await plasma.queue());
+        const queueSize = parseInt(await queue.currentSize(), 10);
+        assert(queueSize === 0, `queue size should be cleared after processExit, but get: ${queueSize}`);
+    });
+
+
+    it("should be able to exit from funding tx", async () => {
+        const plasma = await PlasmaFramework.deployed();
+        const predicate = await PaymentOutputToPaymentTxPredicate.deployed();
+        const simplePaymentExitGame = await SimplePaymentExitGame.deployed();
+        const simplePaymentExitProcessor = await SimplePaymentExitProcessor.deployed();
+        const fundingExitGame = await FundingExitGame.deployed();
+        const fundingExitProcessor = await FundingExitProcessor.deployed();
+
+        await plasma.registerOutputPredicate(1, 1, predicate.address, 1);
+        await plasma.upgradeOutputPredicateTo(1, 1, 1);
+
+        await plasma.registerExitProcessor(1, simplePaymentExitProcessor.address, 1);
+        await plasma.upgradeExitProcessorTo(1, 1);
+
+        await plasma.registerExitGame(1, simplePaymentExitGame.address, 1);
+        await plasma.upgradeExitGameTo(1, 1);
+
+        await plasma.registerExitProcessor(2, fundingExitProcessor.address, 1);
+        await plasma.upgradeExitProcessorTo(2, 1);
+
+        await plasma.registerExitGame(2, fundingExitGame.address, 1);
+        await plasma.upgradeExitGameTo(2, 1);
+
+        const startExit = web3.eth.abi.encodeFunctionCall({
+            name: 'startExit',
+            type: 'function',
+            inputs: [{
+                type: 'uint192',
+                name: '_utxoPos'
+            },{
+                type: 'bytes',
+                name: '_outputTx'
+            },{
+                type: 'bytes',
+                name: '_outputTxInclusionProof'
+            }]
+        }, [123, web3.utils.fromUtf8("dummy tx"), web3.utils.fromUtf8("dummy proof")])
+        await plasma.runExitGame(2, startExit);
+        
+        const EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
+        const exitDataOrigin = await plasma.getBytesStorage(2, EXIT_ID);
+        const decodedExitDataOrigin = web3.eth.abi.decodeParameter({
+            FundingExitDataModel: {
+                exitId: 'uint256',
+                exitable: 'bool',
+                outputHash: 'bytes32',
+                token: 'address',
+                exitTarget: 'address',
+                amount: 'uint256'
+            }
+        }, exitDataOrigin);
+
+        assert(decodedExitDataOrigin.exitable, "exit started and exitable");
+
+        const tx = await plasma.processExits();
+        
+        const queue = await PriorityQueue.at(await plasma.queue());
+        const queueSize = parseInt(await queue.currentSize(), 10);
+        assert(queueSize === 0, `queue size should be cleared after processExit, but get: ${queueSize}`);
     });
 })
