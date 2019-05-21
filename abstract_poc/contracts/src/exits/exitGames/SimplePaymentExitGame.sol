@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "./BaseExitGame.sol";
 import "../models/SimplePaymentExitDataModel.sol";
-import "../../framework/models/ExitModel.sol";
+import "../models/SimplePaymentExitDataModel.sol";
 import "../../framework/interfaces/OutputPredicate.sol";
 import "../../transactions/outputs/PaymentOutputModel.sol";
 import "../../transactions/txs/SimplePaymentTxModel.sol";
@@ -41,12 +41,13 @@ contract SimplePaymentExitGame is BaseExitGame {
             exitable: true,
             outputHash: outputTx.outputs[outputIndex].hash(),
             token: outputTx.outputs[outputIndex].outputData.token,
-            exitTarget: outputTx.outputs[outputIndex].outputData.owner,
+            exitTarget: address(uint160(outputTx.outputs[outputIndex].outputData.owner)),
             amount: outputTx.outputs[outputIndex].outputData.amount
         });
 
         bytes memory exitDataInBytes = abi.encode(exitData);
         framework.setBytesStorage(TX_TYPE, bytes32(exitId), exitDataInBytes);
+        emit ExitStarted(exitId, STANDARD_EXIT_TYPE);
     }
 
     function challengeStandardExitOutputUsed(

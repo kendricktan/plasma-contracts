@@ -18,6 +18,8 @@ contract SimplePaymentExitProcessor is BaseExitProcessor {
         if (exitData.exitable) {
             framework.withdraw(exitData.exitTarget, exitData.amount);
         }
+
+        emit ExitProcessed(exitData.exitId, exitData.exitTarget);
     }
 
 }

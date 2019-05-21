@@ -6,6 +6,11 @@ contract BaseExitGame {
     PlasmaFramework framework;
     address exitProcessor;
 
+    event ExitStarted(
+        uint256 exitId,
+        uint8 exitType
+    );
+
     modifier onlyFromFramework() {
         require(msg.sender == address(framework), "Not being called from the PlasmaFramework");
         _;

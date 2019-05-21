@@ -3,31 +3,29 @@ const PaymentOutputToPaymentTxPredicate = artifacts.require("PaymentOutputToPaym
 const SimplePaymentExitGame = artifacts.require("SimplePaymentExitGame");
 const SimplePaymentExitProcessor = artifacts.require("SimplePaymentExitProcessor");
 
-contract("PlasmaFramework", accounts => {
-    it("should be able to deploy", async () => {
-        const instance = await PlasmaFramework.deployed();
-        assert(instance);
-    });
+const Testlang = require("./testlang.js")
+const Block = require("./block.js").Block
+const SimplePaymentTransaction = require("./transaction.js").SimplePaymentTransaction
+const TransactionInput = require("./transaction.js").TransactionInput
+const TransactionOutput = require("./transaction.js").TransactionOutput
+const UtxoPosition = require("./transaction.js").UtxoPosition
+const EthAddress = Testlang.EthAddress
 
-    it("should be able to deposit", async () => {
-        const plasma = await PlasmaFramework.deployed();
-        await plasma.deposit(web3.utils.fromUtf8("dummy bytes"));
-        const nextDepositBlock = parseInt(await plasma.nextDepositBlock(), 10);
-        assert(nextDepositBlock === 2, `nextDepositBlock should be 2 instead of: [${nextDepositBlock}]`);
-    });
+contract("PlasmaFramework - MVP flow", accounts => {
+    const alice = accounts[1];
+    const DepositValue = 10000000;
 
-    it("should be able to submit block", async () => {
-        const plasma = await PlasmaFramework.deployed();
-        await plasma.submitBlock(web3.utils.fromUtf8("dummy bytes"));
-        const nextChildBlock = parseInt(await plasma.nextChildBlock(), 10);
-        assert(nextChildBlock === 2000, `nextChildBlock should be 2000 instead of: [${nextChildBlock}]`);
-    });
+    let plasma;
+    let predicate;
+    let exitGame;
+    let exitProcessor;
+    let block;
 
-    it("should be able to deploy and register predicate and exit contracts", async () => {
-        const plasma = await PlasmaFramework.deployed();
-        const predicate = await PaymentOutputToPaymentTxPredicate.deployed();
-        const exitGame = await SimplePaymentExitGame.deployed();
-        const exitProcessor = await SimplePaymentExitProcessor.deployed();
+    before("setup contracts", async () => {
+        plasma = await PlasmaFramework.deployed();
+        predicate = await PaymentOutputToPaymentTxPredicate.deployed();
+        exitGame = await SimplePaymentExitGame.deployed();
+        exitProcessor = await SimplePaymentExitProcessor.deployed();
 
         await plasma.registerOutputPredicate(1, 1, predicate.address, 1);
         await plasma.upgradeOutputPredicateTo(1, 1, 1);
@@ -37,215 +35,48 @@ contract("PlasmaFramework", accounts => {
 
         await plasma.registerExitGame(1, exitGame.address, 1);
         await plasma.upgradeExitGameTo(1, 1);
+    });
 
+    it("should register predicate and exit contracts", async () => {
         assert(await plasma.getOutputPredicate(1, 1) === predicate.address, 'predicate failed register');
         assert(await plasma.getExitProcessor(1) === exitProcessor.address, 'exitProcessor failed register');
         assert(await plasma.getExitGame(1) === exitGame.address, 'exitGame failed register');
     });
 
-    it("should be able to start exit and challenge with simple payment tx", async () => {
-        const plasma = await PlasmaFramework.deployed();
-        const predicate = await PaymentOutputToPaymentTxPredicate.deployed();
-        const exitGame = await SimplePaymentExitGame.deployed();
-        const exitProcessor = await SimplePaymentExitProcessor.deployed();
-
-        await plasma.registerOutputPredicate(1, 1, predicate.address, 1);
-        await plasma.upgradeOutputPredicateTo(1, 1, 1);
-
-        await plasma.registerExitProcessor(1, exitProcessor.address, 1);
-        await plasma.upgradeExitProcessorTo(1, 1);
-
-        await plasma.registerExitGame(1, exitGame.address, 1);
-        await plasma.upgradeExitGameTo(1, 1);
-
-        const startStandardExit = web3.eth.abi.encodeFunctionCall({
-            name: 'startStandardExit',
-            type: 'function',
-            inputs: [{
-                type: 'uint192',
-                name: '_utxoPos'
-            },{
-                type: 'bytes',
-                name: '_outputTx'
-            },{
-                type: 'bytes',
-                name: '_outputTxInclusionProof'
-            }]
-        }, [123, web3.utils.fromUtf8("dummy tx"), web3.utils.fromUtf8("dummy proof")])
-        await plasma.runExitGame(1, startStandardExit);
-        
-        //TODO: add assert on storage change
-        EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
-        const exitDataOrigin = await plasma.getBytesStorage(1, EXIT_ID);
-        const decodedExitDataOrigin = web3.eth.abi.decodeParameter({
-            SimplePaymentExitDataModel: {
-                exitId: 'uint256',
-                exitType: 'uint8',
-                exitable: 'bool',
-                outputHash: 'bytes32',
-                token: 'address',
-                exitTarget: 'address',
-                amount: 'uint256'
-            }
-        }, exitDataOrigin);
-
-        assert(decodedExitDataOrigin.exitable, "exit started and exitable");
-
-        const dummyOutput = web3.eth.abi.encodeParameter({
-            TxOutput: {
-                outputType: 'uint256',
-                outputData: {
-                    amount: 'uint256',
-                    owner: 'address',
-                    token: 'address',
-                },
-            }
-        }, {
-            outputType: 1, 
-            outputData: {
-                amount: 10, 
-                owner: '0x0000000000000000000000000000000000000000', 
-                token: '0x0000000000000000000000000000000000000000'
-            }
-        });
-
-        const challengeCall = web3.eth.abi.encodeFunctionCall({
-            name: 'challengeStandardExitOutputUsed',
-            type: 'function',
-            inputs: [{
-                type: 'uint192',
-                name: '_standardExitId'
-            },{
-                type: 'bytes',
-                name: '_output'
-            },{
-                type: 'bytes',
-                name: '_challengeTx'
-            }, {
-                type: 'uint256',
-                name: '_challengeTxType'
-            }, {
-                type: 'uint8',
-                name: '_inputIndex'
-            }]
-        }, [123, dummyOutput, web3.utils.fromUtf8("dummy tx"), 1, 0])
-        await plasma.runExitGame(1, challengeCall);
-
-        const exitDataChallenged = await plasma.getBytesStorage(1, EXIT_ID);
-        const decodedExitDataChallenged = web3.eth.abi.decodeParameter({
-            SimplePaymentExitDataModel: {
-                exitId: 'uint256',
-                exitType: 'uint8',
-                exitable: 'bool',
-                outputHash: 'bytes32',
-                token: 'address',
-                exitTarget: 'address',
-                amount: 'uint256'
-            }
-        }, exitDataChallenged);
-        assert(decodedExitDataChallenged.exitable === false, "successfully challenged");
+    it("should store a deposit", async () => {
+        const deposit = Testlang.deposit(DepositValue, alice);
+        const aliceBalanceBeforeDeposit = await web3.eth.getBalance(alice);
+        await plasma.deposit(deposit, {from: alice, value: web3.utils.toWei(DepositValue.toString(), 'wei')});
+        const aliceBalanceAfterDeposit = await web3.eth.getBalance(alice);
+        const nextDepositBlock = parseInt(await plasma.nextDepositBlock(), 10);
+        assert(nextDepositBlock === 2, `nextDepositBlock should be 2 instead of: [${nextDepositBlock}]`);
     });
 
+    it("should run simple payment exit game", async () => {
+        const txInput = new TransactionInput(1, 0, 0);
+        const txOutput = new TransactionOutput(2, DepositValue, alice, EthAddress)
+        const transaction = new SimplePaymentTransaction([txInput], [txOutput])
+        const block = new Block([transaction]);
+        await plasma.submitBlock(block.getRoot());
 
-    it("should be able to exit from funding tx", async () => {
-        const plasma = await PlasmaFramework.deployed();
-        const exitGame = await SimplePaymentExitGame.deployed();
-        const exitProcessor = await SimplePaymentExitProcessor.deployed();
+        const nextChildBlock = parseInt(await plasma.nextChildBlock(), 10);
+        assert(nextChildBlock === 2000, `nextChildBlock should be 2000 instead of: [${nextChildBlock}]`);
 
-        await plasma.registerOutputPredicate(1, 1, predicate.address, 1);
-        await plasma.upgradeOutputPredicateTo(1, 1, 1);
+        const exitingUtxo = new UtxoPosition(1000, 1, 0);
+        const exit = Testlang.startStandardExit(exitingUtxo, transaction, block);
+        await plasma.runExitGame(1, exit);
 
-        await plasma.registerExitProcessor(1, exitProcessor.address, 1);
-        await plasma.upgradeExitProcessorTo(1, 1);
+        const exitEvents = await exitGame.getPastEvents("ExitStarted");
+        const exitId = exitEvents[0]['returnValues'].exitId;
+        const exitType = exitEvents[0]['returnValues'].exitType;
 
-        await plasma.registerExitGame(1, exitGame.address, 1);
-        await plasma.upgradeExitGameTo(1, 1);
+        assert(exitId === exitingUtxo.encoded().toString() && (exitType === '1'));
+    });
 
-        const startStandardExit = web3.eth.abi.encodeFunctionCall({
-            name: 'startStandardExit',
-            type: 'function',
-            inputs: [{
-                type: 'uint192',
-                name: '_utxoPos'
-            },{
-                type: 'bytes',
-                name: '_outputTx'
-            },{
-                type: 'bytes',
-                name: '_outputTxInclusionProof'
-            }]
-        }, [123, web3.utils.fromUtf8("dummy tx"), web3.utils.fromUtf8("dummy proof")])
-        await plasma.runExitGame(1, startStandardExit);
-        
-        //TODO: add assert on storage change
-        EXIT_ID = '0x000000000000000000000000000000000000000000000000000000000000007b';
-        const exitDataOrigin = await plasma.getBytesStorage(1, EXIT_ID);
-        const decodedExitDataOrigin = web3.eth.abi.decodeParameter({
-            SimplePaymentExitDataModel: {
-                exitId: 'uint256',
-                exitType: 'uint8',
-                exitable: 'bool',
-                outputHash: 'bytes32',
-                token: 'address',
-                exitTarget: 'address',
-                amount: 'uint256'
-            }
-        }, exitDataOrigin);
-
-        assert(decodedExitDataOrigin.exitable, "exit started and exitable");
-
-        const dummyOutput = web3.eth.abi.encodeParameter({
-            TxOutput: {
-                outputType: 'uint256',
-                outputData: {
-                    amount: 'uint256',
-                    owner: 'address',
-                    token: 'address',
-                },
-            }
-        }, {
-            outputType: 1, 
-            outputData: {
-                amount: 10, 
-                owner: '0x0000000000000000000000000000000000000000', 
-                token: '0x0000000000000000000000000000000000000000'
-            }
-        });
-
-        const challengeCall = web3.eth.abi.encodeFunctionCall({
-            name: 'challengeStandardExitOutputUsed',
-            type: 'function',
-            inputs: [{
-                type: 'uint192',
-                name: '_standardExitId'
-            },{
-                type: 'bytes',
-                name: '_output'
-            },{
-                type: 'bytes',
-                name: '_challengeTx'
-            }, {
-                type: 'uint256',
-                name: '_challengeTxType'
-            }, {
-                type: 'uint8',
-                name: '_inputIndex'
-            }]
-        }, [123, dummyOutput, web3.utils.fromUtf8("dummy tx"), 1, 0])
-        await plasma.runExitGame(1, challengeCall);
-
-        const exitDataChallenged = await plasma.getBytesStorage(1, EXIT_ID);
-        const decodedExitDataChallenged = web3.eth.abi.decodeParameter({
-            SimplePaymentExitDataModel: {
-                exitId: 'uint256',
-                exitType: 'uint8',
-                exitable: 'bool',
-                outputHash: 'bytes32',
-                token: 'address',
-                exitTarget: 'address',
-                amount: 'uint256'
-            }
-        }, exitDataChallenged);
-        assert(decodedExitDataChallenged.exitable === false, "successfully challenged");
+    it("should finalize exit", async () => {
+      const aliceBalanceBeforeFinalization = await web3.eth.getBalance(alice);
+      const tx = await plasma.processExits();
+      const aliceBalancePostFinalization = await web3.eth.getBalance(alice);
+      assert.equal(parseInt(aliceBalanceBeforeFinalization) + DepositValue, parseInt(aliceBalancePostFinalization))
     });
 })

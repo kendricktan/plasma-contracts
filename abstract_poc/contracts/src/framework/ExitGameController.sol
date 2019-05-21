@@ -36,11 +36,16 @@ contract ExitGameController is PlasmaStorage, ExitGameRegistry, ExitGameWhitelis
         uint256 uniquePriority = queue.getMin();
         ExitModel.Exit memory exit = exits[uniquePriority];
 
-        while(exit.exitableAt < block.timestamp) {
+        // FIX: <= used until we introduce proper exit finalization margin
+        while (exit.exitableAt <= block.timestamp) {
             ExitProcessor processor = ExitProcessor(exit.exitProcessor);
             processor.processExit(exit.exitId);
 
             queue.delMin();
+
+            if (queue.currentSize() == 0) {
+              return;
+            }
 
             uniquePriority = queue.getMin();
             exit = exits[uniquePriority];

@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 import "../TxInputModel.sol";
 import "../outputs/PaymentOutputModel.sol";
+import "../../utils/RLP.sol";
 
 library SimplePaymentTxModel {
     uint256 constant TX_TYPE = 1;
@@ -9,6 +10,10 @@ library SimplePaymentTxModel {
     uint256 constant MAX_OUPUT = 1;
 
     using PaymentOutputModel for PaymentOutputModel.TxOutput;
+    using PaymentOutputModel for RLP.RLPItem;
+    using TxInputModel for RLP.RLPItem;
+    using RLP for bytes;
+    using RLP for RLP.RLPItem;
 
     struct ProofData {
         bytes signature;
@@ -45,31 +50,33 @@ library SimplePaymentTxModel {
         return (true, "");
     }
 
-    function decode(bytes memory _tx) internal pure returns (SimplePaymentTxModel.Tx memory){
-        // POC implement
-        return DummyTxFactory.get();
-    }
-}
+    function decode(bytes memory _tx) internal view returns (SimplePaymentTxModel.Tx memory) {
+      RLP.RLPItem[] memory rlpTx = _tx.toRLPItem().toList();
+      require(rlpTx.length == 4 || rlpTx.length == 5);
 
+      uint256 txType = rlpTx[0].toUint();
+      RLP.RLPItem[] memory inputs = rlpTx[1].toList();
+      RLP.RLPItem[] memory outputs = rlpTx[2].toList();
 
-// temp code for POC testing
-library DummyTxFactory {
-    function get() internal pure returns (SimplePaymentTxModel.Tx memory) {
-        // dummy implement
-        TxInputModel.TxInput[1] memory ins;
-        PaymentOutputModel.TxOutput[1] memory outs;
+      require(inputs.length == 1, "Too many inputs");
+      require(outputs.length == 1, "Too many outputs");
 
-        TxInputModel.TxInput memory dummyTxIn = TxInputModel.TxInput(0, 0, 0);
-        PaymentOutputModel.TxOutput memory dummyTxOut = PaymentOutputModel.TxOutput(
-            1, PaymentOutputModel.TxOutputData(10, address(0), address(0)));
+      SimplePaymentTxModel.Tx memory decodedTx;
+      decodedTx.txType = txType;
+      TxInputModel.TxInput memory input = inputs[0].decodeInput();
+      decodedTx.inputs[0] = input;
 
-        ins[0] = dummyTxIn;
-        outs[0] = dummyTxOut;
-        return SimplePaymentTxModel.Tx(
-            SimplePaymentTxModel.getTxType(),
-            ins,
-            outs,
-            SimplePaymentTxModel.ProofData(bytes("signature")), SimplePaymentTxModel.MetaData("")
-        );
+      PaymentOutputModel.TxOutput memory output = outputs[0].decodeOutput();
+
+      decodedTx.outputs[0] = output;
+      decodedTx.proofData =  SimplePaymentTxModel.ProofData(rlpTx[3].toBytes());
+
+      if (rlpTx.length == 5) {
+          decodedTx.metaData = MetaData(rlpTx[4].toBytes32());
+      } else {
+          decodedTx.metaData = MetaData("");
+      }
+
+      return decodedTx;
     }
 }

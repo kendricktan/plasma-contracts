@@ -6,6 +6,10 @@ import "../../framework/interfaces/ExitProcessor.sol";
 contract BaseExitProcessor is ExitProcessor {
     PlasmaFramework framework;
 
+    event ExitProcessed(
+      uint256 exitId,
+      address exitTarget);
+
     modifier onlyFromFramework() {
         require(msg.sender == address(framework), "Not being called from the PlasmaFramework");
         _;

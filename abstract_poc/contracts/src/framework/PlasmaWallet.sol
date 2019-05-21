@@ -8,6 +8,12 @@ import {SimplePaymentTxModel as DepositTx} from "../transactions/txs/SimplePayme
 contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockController {
     using DepositTx for DepositTx.Tx;
 
+    event DepositCreated(
+      uint256 blknum,
+      address owner,
+      address token,
+      uint256 amount);
+
     /**
      * @dev Allows a user to submit a deposit.
      * @param _depositTx RLP encoded transaction to act as the deposit.
@@ -23,10 +29,9 @@ contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockCon
         (bool isFormatValid, string memory message) = decodedTx.checkFormat();
         require(isFormatValid, message);
 
-        //TODO: ignore this check in POC
-        //require(decodedTx.outputs[0].outputData.amount == msg.value, "First output does not has correct value as msg.value");
+        require(decodedTx.outputs[0].outputData.amount == msg.value, "Deposited value does not match sent amount");
 
-        require(decodedTx.outputs[0].outputData.token == address(0), "First output does not has correct currency (ETH)");
+        require(decodedTx.outputs[0].outputData.token == address(0), "First output does not have correct currency (ETH)");
 
         // Perform other checks and create a deposit block.
         _processDeposit(_depositTx, decodedTx);
@@ -37,8 +42,8 @@ contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockCon
     * @param _target Place to transfer eth.
     * @param _amount Amount of eth to transfer.
     */
-    function withdraw(address _target, uint256 _amount) external onlyExitProcessor {
-        // TODO: implement
+    function withdraw(address payable _target, uint256 _amount) external onlyExitProcessor {
+        _target.transfer(_amount);
     }
 
     function _processDeposit(bytes memory _depositTx, DepositTx.Tx memory decodedTx) private {
@@ -63,11 +68,11 @@ contract PlasmaWallet is PlasmaStorage, ExitProcessorWhitelisted, PlasmaBlockCon
 
         nextDepositBlock++;
 
-        // emit DepositCreated(
-        //     decodedTx.outputs[0].owner,
-        //     blknum,
-        //     decodedTx.outputs[0].token,
-        //     decodedTx.outputs[0].amount
-        // );
+      /*  emit DepositCreated(
+             blknum,
+             decodedTx.outputs[0].owner,
+             decodedTx.outputs[0].token,
+             decodedTx.outputs[0].amount
+        );*/
     }
 }
