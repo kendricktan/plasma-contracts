@@ -1,4 +1,5 @@
 pragma solidity ^0.5.0;
+pragma experimental ABIEncoderV2;
 
 library DexOutputModel {
     uint256 constant OUTPUT_TYPE = 2;
@@ -21,6 +22,14 @@ library DexOutputModel {
         }
 
         return (true, "");
+    }
+
+    function hash(TxOutput memory _output) internal pure returns (bytes32) {
+        return keccak256(abi.encode(_output));
+    }
+
+    function getOutputType() internal pure returns (uint256) {
+        return OUTPUT_TYPE;
     }
 }
 
