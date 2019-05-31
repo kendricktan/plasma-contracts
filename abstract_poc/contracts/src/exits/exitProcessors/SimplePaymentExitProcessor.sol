@@ -3,20 +3,27 @@ pragma solidity ^0.5.0;
 // see: https://github.com/ethereum/solidity/issues/5397
 pragma experimental ABIEncoderV2;
 
-import "./BaseExitProcessor.sol";
+import "./OnlyFramework.sol";
 import "../models/SimplePaymentExitDataModel.sol";
+import "../../vaults/EthVault.sol";
 
-contract SimplePaymentExitProcessor is BaseExitProcessor {
+contract SimplePaymentExitProcessor is OnlyFramework {
     uint256 constant TX_TYPE = 1;
 
-    constructor(address _framework) BaseExitProcessor(_framework) public {}
+    PlasmaFramework framework;
+    EthVault ethVault;
 
-    function processExit(uint256 _exitId) external onlyFromFramework {
+    constructor(address _framework, address _ethVault) public {
+        framework = PlasmaFramework(_framework);
+        ethVault = EthVault(_ethVault);
+    }
+
+    function processExit(uint256 _exitId) external onlyFramework {
         bytes memory exitDataInBytes = framework.getBytesStorage(TX_TYPE, bytes32(_exitId));
         SimplePaymentExitDataModel.Data memory exitData = abi.decode(exitDataInBytes, (SimplePaymentExitDataModel.Data));
 
-        if (exitData.exitable) {
-            framework.withdraw(exitData.exitTarget, exitData.amount);
+        if (exitData.exitable && exitData.token == address(0)) {
+            ethVault.withdraw(exitData.exitTarget, exitData.amount);
         }
     }
 

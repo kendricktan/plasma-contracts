@@ -10,7 +10,7 @@ library SimplePaymentTxModel {
 
     using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
-    struct ProofData {
+    struct Witness {
         bytes signature;
     }
 
@@ -22,7 +22,7 @@ library SimplePaymentTxModel {
         uint256 txType;
         TxInputModel.TxInput[MAX_INPUT] inputs;
         PaymentOutputModel.TxOutput[MAX_OUPUT] outputs;
-        ProofData proofData;
+        Witness witness;
         MetaData metaData;
     }
 
@@ -69,7 +69,8 @@ library DummyTxFactory {
             SimplePaymentTxModel.getTxType(),
             ins,
             outs,
-            SimplePaymentTxModel.ProofData(bytes("signature")), SimplePaymentTxModel.MetaData("")
+            SimplePaymentTxModel.Witness(bytes("signature")),
+            SimplePaymentTxModel.MetaData("")
         );
     }
 }

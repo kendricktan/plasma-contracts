@@ -1,8 +1,8 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import "./BaseExitGame.sol";
 import "../models/FundingExitDataModel.sol";
+import "../../framework/PlasmaFramework.sol";
 import "../../framework/models/ExitModel.sol";
 import "../../framework/interfaces/OutputPredicate.sol";
 import "../../transactions/outputs/DexOutputModel.sol";
@@ -11,16 +11,20 @@ import "../../transactions/txs/FundingTxModel.sol";
 /**
 MVP
  */
-contract FundingExitGame is BaseExitGame {
+contract FundingExitGame {
     uint256 constant TX_TYPE = 2;
+
+    PlasmaFramework framework;
+    address exitProcessor;
 
     using DexOutputModel for DexOutputModel.TxOutput;
 
-    constructor(address _framework, address _exitProcessor)
-        BaseExitGame(_framework, _exitProcessor) public {}
+    constructor(address _framework, address _exitProcessor) public {
+        framework = PlasmaFramework(_framework);
+        exitProcessor = _exitProcessor;
+    }
 
-    function startExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof)
-        external onlyFromFramework {
+    function startExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof) external {
         //TODO: check inclusion proof
 
         // If we are using ABIEncoderV2, I think we can even pass in the struct directly instead of bytes then there is no need to decode (?)
@@ -52,7 +56,7 @@ contract FundingExitGame is BaseExitGame {
         bytes calldata _challengeTx,
         uint256 _challengeTxType,
         uint8 _inputIndex
-    ) external onlyFromFramework {
+    ) external {
         uint256 exitId = uint256(_standardExitId);
         bytes memory exitDataInBytes = framework.getBytesStorage(TX_TYPE, bytes32(exitId));
         FundingExitDataModel.Data memory exitData = abi.decode(exitDataInBytes, (FundingExitDataModel.Data));

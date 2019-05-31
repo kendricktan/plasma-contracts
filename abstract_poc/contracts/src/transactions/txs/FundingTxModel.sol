@@ -10,7 +10,7 @@ library FundingTxModel {
     using DexOutputModel for DexOutputModel.TxOutput;
     using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
-    struct ProofData {
+    struct Witness {
         bytes signature;
     }
 
@@ -22,7 +22,7 @@ library FundingTxModel {
         uint256 txType;
         TxInputModel.TxInput[1] inputs;
         DexOutputModel.TxOutput[1] dexOutputs;
-        ProofData proofData;
+        Witness witness;
         MetaData metaData;
     }
 
@@ -55,7 +55,8 @@ library DummyTxFactory {
             FundingTxModel.getTxType(),
             ins,
             dexOutputs,
-            FundingTxModel.ProofData(bytes("signature")), FundingTxModel.MetaData("")
+            FundingTxModel.Witness(bytes("signature")),
+            FundingTxModel.MetaData("")
         );
     }
 }
