@@ -5,9 +5,9 @@ import "../models/FundingExitDataModel.sol";
 import "../../framework/PlasmaFramework.sol";
 import "../../framework/models/ExitModel.sol";
 import "../../framework/interfaces/OutputPredicate.sol";
+import "../../framework/utils/Merkle.sol";
 import "../../transactions/outputs/DexOutputModel.sol";
 import "../../transactions/txs/FundingTxModel.sol";
-
 /**
 MVP
  */
@@ -30,13 +30,13 @@ contract FundingExitGame {
         // If we are using ABIEncoderV2, I think we can even pass in the struct directly instead of bytes then there is no need to decode (?)
         FundingTxModel.Tx memory outputTx = FundingTxModel.decode(_outputTx);
 
-        uint256 exitId = uint(_utxoPos);
+        uint256 exitId = uint256(_utxoPos);
         uint256 exitableAt = block.timestamp; // Need to add a period, for prototype we make it insecure
         ExitModel.Exit memory exit = ExitModel.Exit(exitProcessor, exitableAt, exitId);
         uint192 priority = _utxoPos;
         framework.enqueue(priority, exit);
 
-        uint256 outputIndex = 0; // funding tx is 1 input and output tx
+        uint256 outputIndex = 0; // funding tx is a 0-input and 1-output tx
         FundingExitDataModel.Data memory exitData = FundingExitDataModel.Data({
             exitId: exitId,
             exitable: true,
