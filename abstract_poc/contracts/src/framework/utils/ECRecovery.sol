@@ -17,7 +17,7 @@ library ECRecovery {
      * @param _sig Signature over the hash.
      * @return Address of the signee.
      */
-    function recover(bytes32 _hash, bytes _sig)
+    function recover(bytes32 _hash, bytes memory _sig)
         internal
         pure
         returns (address)

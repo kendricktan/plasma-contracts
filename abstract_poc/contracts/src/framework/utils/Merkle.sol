@@ -28,7 +28,7 @@ library Merkle {
      * @param proof A Merkle proof demonstrating membership of the leaf hash.
      * @return True of the leaf hash is in the Merkle tree. False otherwise.
     */
-    function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes proof)
+    function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes memory proof)
         internal
         pure
         returns (bool)

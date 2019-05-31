@@ -5,12 +5,12 @@ import "./models/BlockModel.sol";
 import "./priorityQueue/PriorityQueue.sol";
 
 /**
-Centralized place to hold all Plasma storages.
+Centralized place to hold all Plasma storage.
 If we want to use proxy contract upgrade on the plasma layer,
 we need to make the the order of storage declaration can be only appended.
 When upgrade, should just extends this storage to v2 and add new storage
-defintions to maker sure the storage layout does not break.
-Put everything in a centralizec place to avoid possible future crash.
+definitions to maker sure the storage layout does not break.
+Put everything in a centralized place to avoid possible future crash.
  */
 contract PlasmaStorage {
     /**

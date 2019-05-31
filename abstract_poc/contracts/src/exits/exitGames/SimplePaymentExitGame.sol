@@ -9,7 +9,7 @@ import "../../transactions/outputs/PaymentOutputModel.sol";
 import "../../transactions/txs/SimplePaymentTxModel.sol";
 
 /**
- Using MoreVp, POC skiping IFE
+ Using MoreVp, POC skipping IFE
  */
 contract SimplePaymentExitGame {
 
@@ -33,7 +33,9 @@ contract SimplePaymentExitGame {
     }
 
     function startStandardExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof) external {
-        //TODO: check inclusion proof
+
+        // Check inclusion of the transaction
+        require(framework.transactionIncluded(_outputTx, _utxoPos, _outputTxInclusionProof));
 
         // If we are using ABIEncoderV2, I think we can even pass in the struct directly instead of bytes then there is no need to decode (?)
         SimplePaymentTxModel.Tx memory outputTx = SimplePaymentTxModel.decode(_outputTx);
