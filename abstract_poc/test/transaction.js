@@ -28,46 +28,56 @@ class TransactionOutput {
   }
 }
 
+class Witness {
+  constructor(witness) {
+    this.witness = witness;
+  }
+
+  formatForRlpEncoding() {
+    return this.witness;
+  }
+}
+
 class Transaction {
-  constructor(transactionType, inputs, outputs, proofData, metaData = NullData) {
+  constructor(transactionType, inputs, outputs, witnesses, metaData = NullData) {
     this.transactionType = transactionType;
     this.inputs = inputs;
     this.outputs = outputs;
-    this.proofData = proofData;
+    this.witnesses = witnesses;
     this.metaData = metaData;
   }
 
   rlpEncoded() {
     const tx = [this.transactionType];
 
-    tx.push(Transaction.formatUtxo(this.inputs));
-    tx.push(Transaction.formatUtxo(this.outputs));
-    tx.push(this.proofData);
+    tx.push(Transaction.formatForRlpEncoding(this.inputs));
+    tx.push(Transaction.formatForRlpEncoding(this.outputs));
+    tx.push(Transaction.formatForRlpEncoding(this.witnesses));
     tx.push(this.metaData);
 
     return rlp.encode(tx);
   }
 
-  static formatUtxo(utxos) {
-    return utxos.map(utxo => utxo.formatForRlpEncoding());
+  static formatForRlpEncoding(items) {
+    return items.map(item => item.formatForRlpEncoding());
   }
 }
 
 class SimplePaymentTransaction extends Transaction {
-  constructor(inputs, outputs, proofData = NullData, metaData = NullData) {
-    super(1, inputs, outputs, proofData, metaData);
+  constructor(inputs, outputs, witnesses, metaData = NullData) {
+    super(1, inputs, outputs, witnesses, metaData);
   }
 }
 
 class FundingTransaction extends Transaction {
-  constructor(inputs, outputs, proofData = NullData, metaData = NullData) {
-    super(2, inputs, outputs, proofData, metaData);
+  constructor(inputs, outputs, witnesses, metaData = NullData) {
+    super(2, inputs, outputs, witnesses, metaData);
   }
 }
 
 class BatchSettlementTransaction extends Transaction {
-  constructor(inputs, outputs, proofData = NullData, metaData = NullData) {
-    super(3, inputs, outputs, proofData, metaData);
+  constructor(inputs, outputs, witnesses, metaData = NullData) {
+    super(3, inputs, outputs, witnesses, metaData);
   }
 }
 
@@ -93,3 +103,4 @@ module.exports.BatchSettlementTransaction = BatchSettlementTransaction
 module.exports.TransactionInput = TransactionInput
 module.exports.TransactionOutput = TransactionOutput
 module.exports.UtxoPosition = UtxoPosition
+module.exports.Witness = Witness

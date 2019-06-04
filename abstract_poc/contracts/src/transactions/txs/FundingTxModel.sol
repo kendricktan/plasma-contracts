@@ -10,7 +10,7 @@ library FundingTxModel {
     using DexOutputModel for DexOutputModel.TxOutput;
     using PaymentOutputModel for PaymentOutputModel.TxOutput;
 
-    struct ProofData {
+    struct Witness {
         bytes signature;
     }
 
@@ -22,7 +22,7 @@ library FundingTxModel {
         uint256 txType;
         TxInputModel.TxInput[1] inputs;
         DexOutputModel.TxOutput[1] dexOutputs;
-        ProofData proofData;
+        Witness[1] witnesses;
         MetaData metaData;
     }
 
@@ -32,17 +32,18 @@ library FundingTxModel {
 
     function decode(bytes memory _tx) internal pure returns (FundingTxModel.Tx memory){
         // POC implement
-        return DummyTxFactory.get();
+        return DummyFundingTxFactory.get();
     }
 }
 
 
 // temp code for POC testing
-library DummyTxFactory {
+library DummyFundingTxFactory {
     function get() internal pure returns (FundingTxModel.Tx memory) {
         // dummy implement
         TxInputModel.TxInput[1] memory ins;
         DexOutputModel.TxOutput[1] memory dexOutputs;
+        FundingTxModel.Witness[1] memory witnesses;
 
         TxInputModel.TxInput memory dummyTxIn = TxInputModel.TxInput(1, 0, 0);
         DexOutputModel.TxOutput memory dummyDexOutput = DexOutputModel.TxOutput(
@@ -50,12 +51,13 @@ library DummyTxFactory {
 
         ins[0] = dummyTxIn;
         dexOutputs[0] = dummyDexOutput;
-
+        witnesses[0] = FundingTxModel.Witness(bytes("signature"));
         return FundingTxModel.Tx(
             FundingTxModel.getTxType(),
             ins,
             dexOutputs,
-            FundingTxModel.ProofData(bytes("signature")), FundingTxModel.MetaData("")
+            witnesses,
+            FundingTxModel.MetaData("")
         );
     }
 }
