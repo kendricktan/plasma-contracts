@@ -43,7 +43,8 @@ class MerkleTree {
 
     let i = 0;
     while (i < level_size) {
-      const combined = web3.utils.sha3(level[i].data + level[i + 1].data);
+      const combined_data = level[i].data + level[i+1].data.slice(2); // JS stores hashes as hex-encoded strings
+      const combined = web3.utils.sha3(web3.utils.hexToBytes(combined_data));
       const next_node = new MerkleNode(combined, level[i], level[i + 1]);
       next_level.push(next_node);
       i += 2;

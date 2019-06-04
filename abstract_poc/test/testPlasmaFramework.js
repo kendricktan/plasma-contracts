@@ -71,7 +71,7 @@ contract("PlasmaFramework - MVP flow", accounts => {
         const nextChildBlock = parseInt(await plasma.nextChildBlock(), 10);
         assert(nextChildBlock === 2000, `nextChildBlock should be 2000 instead of: [${nextChildBlock}]`);
 
-        const exitingUtxo = new UtxoPosition(1000, 1, 0);
+        const exitingUtxo = new UtxoPosition(1000, 0, 0);
         const exit = Testlang.startStandardExit(exitingUtxo, transaction, block);
         await plasma.runExitGame(1, exit);
 
