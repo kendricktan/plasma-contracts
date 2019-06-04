@@ -22,7 +22,7 @@ library SimplePaymentTxModel {
         uint256 txType;
         TxInputModel.TxInput[MAX_INPUT] inputs;
         PaymentOutputModel.TxOutput[MAX_OUPUT] outputs;
-        Witness witness;
+        Witness[MAX_INPUT] witnesses;
         MetaData metaData;
     }
 
@@ -47,17 +47,18 @@ library SimplePaymentTxModel {
 
     function decode(bytes memory _tx) internal pure returns (SimplePaymentTxModel.Tx memory){
         // POC implement
-        return DummyTxFactory.get();
+        return DummySimplePaymentTxFactory.get();
     }
 }
 
 
 // temp code for POC testing
-library DummyTxFactory {
+library DummySimplePaymentTxFactory {
     function get() internal pure returns (SimplePaymentTxModel.Tx memory) {
         // dummy implement
         TxInputModel.TxInput[1] memory ins;
         PaymentOutputModel.TxOutput[1] memory outs;
+        SimplePaymentTxModel.Witness[1] memory witnesses;
 
         TxInputModel.TxInput memory dummyTxIn = TxInputModel.TxInput(0, 0, 0);
         PaymentOutputModel.TxOutput memory dummyTxOut = PaymentOutputModel.TxOutput(
@@ -65,11 +66,12 @@ library DummyTxFactory {
 
         ins[0] = dummyTxIn;
         outs[0] = dummyTxOut;
+        witnesses[0] = SimplePaymentTxModel.Witness(bytes("signature"));
         return SimplePaymentTxModel.Tx(
             SimplePaymentTxModel.getTxType(),
             ins,
             outs,
-            SimplePaymentTxModel.Witness(bytes("signature")),
+            witnesses,
             SimplePaymentTxModel.MetaData("")
         );
     }
