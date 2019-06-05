@@ -1,19 +1,13 @@
 pragma solidity ^0.5.0;
-// Should be safe to use. It is marked as experimental as it costs higher gas usage.
-// see: https://github.com/ethereum/solidity/issues/5397
 pragma experimental ABIEncoderV2;
 
 import "./OnlyFramework.sol";
-import "../models/SimplePaymentExitDataModel.sol";
+import "../models/FundingExitDataModel.sol";
+import "../../WithFramework.sol";
 import "../../vaults/EthVault.sol";
 
-contract SimplePaymentExitProcessor {
-
-    event ExitProcessed(
-      uint256 exitId,
-      address exitTarget);
-
-    uint256 constant TX_TYPE = 1;
+contract FundingExitProcessor {
+    uint256 constant TX_TYPE = 2;
 
     PlasmaFramework framework;
     EthVault ethVault;
@@ -30,13 +24,10 @@ contract SimplePaymentExitProcessor {
 
     function processExit(uint256 _exitId) external onlyFramework {
         bytes memory exitDataInBytes = framework.getBytesStorage(TX_TYPE, bytes32(_exitId));
-        SimplePaymentExitDataModel.Data memory exitData = abi.decode(exitDataInBytes, (SimplePaymentExitDataModel.Data));
+        FundingExitDataModel.Data memory exitData = abi.decode(exitDataInBytes, (FundingExitDataModel.Data));
 
         if (exitData.exitable && exitData.token == address(0)) {
             ethVault.withdraw(exitData.exitTarget, exitData.amount);
         }
-
-        emit ExitProcessed(exitData.exitId, exitData.exitTarget);
     }
-
 }

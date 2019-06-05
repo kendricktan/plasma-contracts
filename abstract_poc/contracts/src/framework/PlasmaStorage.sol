@@ -24,9 +24,7 @@ contract PlasmaStorage {
     uint256 public nextChildBlock;
     uint256 public nextDepositBlock;
 
-    PriorityQueue queue;
-
-    bytes32[16] zeroHashes;
+    PriorityQueue public queue;
 
     /**
     Generalize storage
@@ -64,4 +62,10 @@ contract PlasmaStorage {
      */
     mapping(bytes32 => address) internal outputPredicatesCurrentVersion;
     mapping(bytes32 => address) internal outputPredicatesAllVersion;
+
+    /**
+    Vault Registry
+     */
+    mapping(uint256 => address) internal vaults;
+    mapping(address => uint256) internal vaultToId;
 }

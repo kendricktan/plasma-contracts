@@ -15,7 +15,7 @@ library SimplePaymentTxModel {
     using RLP for bytes;
     using RLP for RLP.RLPItem;
 
-    struct ProofData {
+    struct Witness {
         bytes signature;
     }
 
@@ -27,7 +27,7 @@ library SimplePaymentTxModel {
         uint256 txType;
         TxInputModel.TxInput[MAX_INPUT] inputs;
         PaymentOutputModel.TxOutput[MAX_OUPUT] outputs;
-        ProofData proofData;
+        Witness[MAX_INPUT] witnesses;
         MetaData metaData;
     }
 
@@ -67,9 +67,11 @@ library SimplePaymentTxModel {
       decodedTx.inputs[0] = input;
 
       PaymentOutputModel.TxOutput memory output = outputs[0].decodeOutput();
-
       decodedTx.outputs[0] = output;
-      decodedTx.proofData =  SimplePaymentTxModel.ProofData(rlpTx[3].toBytes());
+
+      RLP.RLPItem[] memory witnesses = rlpTx[3].toList();
+      require(witnesses.length == 1, "to many witnesses for simple payment transaction");
+      decodedTx.witnesses[0] = Witness(witnesses[0].toBytes());
 
       if (rlpTx.length == 5) {
           decodedTx.metaData = MetaData(rlpTx[4].toBytes32());

@@ -3,8 +3,12 @@ pragma solidity ^0.5.0;
 import "../utils/RLP.sol";
 
 library TxInputModel {
+
     using RLP for bytes;
     using RLP for RLP.RLPItem;
+
+    uint256 constant internal BLOCK_OFFSET = 1000000000;
+    uint256 constant internal TX_OFFSET = 10000;
 
     struct TxInput {
         uint256 blknum;
@@ -21,5 +25,9 @@ library TxInputModel {
             txindex: input[1].toUint(),
             oindex: input[2].toUint()
         });
+    }
+
+    function toUtxoPos(TxInput memory _input) internal pure returns (uint256) {
+        return _input.blknum * BLOCK_OFFSET + _input.txindex * TX_OFFSET + _input.oindex;
     }
 }

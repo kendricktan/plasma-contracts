@@ -1,6 +1,7 @@
 const TransactionInput = require("./transaction.js").TransactionInput
 const TransactionOutput = require("./transaction.js").TransactionOutput
 const SimplePaymentTransaction = require("./transaction.js").SimplePaymentTransaction
+const Witness = require("./transaction.js").Witness
 
 const StandardExitSpec = {
     name: 'startStandardExit',
@@ -43,7 +44,7 @@ const DepositInput = new TransactionInput(0, 0, 0);
 function deposit(amount, owner, tokenAddress = EthAddress) {
   const txOutput = new TransactionOutput(DepositOutputType, amount, owner, tokenAddress);
   //TODO: use proper sig
-  const deposit = new SimplePaymentTransaction([DepositInput], [txOutput], "signature");
+  const deposit = new SimplePaymentTransaction([DepositInput], [txOutput], [new Witness("signature")]);
   return deposit.rlpEncoded();
 }
 

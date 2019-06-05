@@ -1,7 +1,14 @@
+const {advanceTimeAndBlock} = require('./testllb/advanceTime.js');
+
+const PriorityQueue = artifacts.require("PriorityQueue");
 const PlasmaFramework = artifacts.require("PlasmaFramework");
 const PaymentOutputToPaymentTxPredicate = artifacts.require("PaymentOutputToPaymentTxPredicate");
 const SimplePaymentExitGame = artifacts.require("SimplePaymentExitGame");
 const SimplePaymentExitProcessor = artifacts.require("SimplePaymentExitProcessor");
+const FundingExitGame = artifacts.require("FundingExitGame");
+const FundingExitProcessor = artifacts.require("FundingExitProcessor");
+const EthVault = artifacts.require("EthVault");
+
 
 const Testlang = require("./testlang.js")
 const Block = require("./block.js").Block
@@ -9,6 +16,7 @@ const SimplePaymentTransaction = require("./transaction.js").SimplePaymentTransa
 const TransactionInput = require("./transaction.js").TransactionInput
 const TransactionOutput = require("./transaction.js").TransactionOutput
 const UtxoPosition = require("./transaction.js").UtxoPosition
+const Witness = require("./transaction.js").Witness
 const EthAddress = Testlang.EthAddress
 
 contract("PlasmaFramework - MVP flow", accounts => {
@@ -23,6 +31,7 @@ contract("PlasmaFramework - MVP flow", accounts => {
 
     before("setup contracts", async () => {
         plasma = await PlasmaFramework.deployed();
+        ethVault = await EthVault.deployed();
         predicate = await PaymentOutputToPaymentTxPredicate.deployed();
         exitGame = await SimplePaymentExitGame.deployed();
         exitProcessor = await SimplePaymentExitProcessor.deployed();
@@ -35,6 +44,8 @@ contract("PlasmaFramework - MVP flow", accounts => {
 
         await plasma.registerExitGame(1, exitGame.address, 1);
         await plasma.upgradeExitGameTo(1, 1);
+
+        await plasma.registerVault(1, ethVault.address);
     });
 
     it("should register predicate and exit contracts", async () => {
@@ -45,9 +56,7 @@ contract("PlasmaFramework - MVP flow", accounts => {
 
     it("should store a deposit", async () => {
         const deposit = Testlang.deposit(DepositValue, alice);
-        const aliceBalanceBeforeDeposit = await web3.eth.getBalance(alice);
-        await plasma.deposit(deposit, {from: alice, value: web3.utils.toWei(DepositValue.toString(), 'wei')});
-        const aliceBalanceAfterDeposit = await web3.eth.getBalance(alice);
+        await ethVault.deposit(deposit, {from: alice, value: web3.utils.toWei(DepositValue.toString(), 'wei')});
         const nextDepositBlock = parseInt(await plasma.nextDepositBlock(), 10);
         assert(nextDepositBlock === 2, `nextDepositBlock should be 2 instead of: [${nextDepositBlock}]`);
     });
@@ -55,7 +64,7 @@ contract("PlasmaFramework - MVP flow", accounts => {
     it("should run simple payment exit game", async () => {
         const txInput = new TransactionInput(1, 0, 0);
         const txOutput = new TransactionOutput(2, DepositValue, alice, EthAddress)
-        const transaction = new SimplePaymentTransaction([txInput], [txOutput])
+        const transaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")])
         const block = new Block([transaction]);
         await plasma.submitBlock(block.getRoot());
 
