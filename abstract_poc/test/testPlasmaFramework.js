@@ -90,4 +90,23 @@ contract("PlasmaFramework - MVP flow", accounts => {
       const aliceBalancePostFinalization = new BN(await web3.eth.getBalance(alice), 10);
       assert(aliceBalancePostFinalization.sub(aliceBalanceBeforeFinalization).eq(new BN(DepositValue, 10)));
     });
+
+    it("should challenge invalid exit", async () => {
+      const deposit = Testlang.deposit(DepositValue, alice);
+      await ethVault.deposit(deposit, {from: alice, value: web3.utils.toWei(DepositValue.toString(), 'wei')});
+
+      let txInput = new TransactionInput(1001, 0, 0);
+      let txOutput = new TransactionOutput(1, DepositValue, alice, EthAddress);
+      const exitingTransaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")]);
+      let block = new Block([exitingTransaction]);
+      await plasma.submitBlock(block.getRoot());
+
+      txInput = new TransactionInput(2000, 0, 0);
+      txOutput = new TransactionOutput(1, DepositValue, alice, EthAddress);
+      const spendingTransaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")]);
+      block = new Block([spendingTransaction]);
+      await plasma.submitBlock(block.getRoot());
+
+      
+    });
 })
