@@ -19,6 +19,8 @@ const UtxoPosition = require("./transaction.js").UtxoPosition
 const Witness = require("./transaction.js").Witness
 const EthAddress = Testlang.EthAddress
 
+const BN = require('bn.js');
+
 contract("PlasmaFramework - MVP flow", accounts => {
     const alice = accounts[1];
     const DepositValue = 10000000;
@@ -83,9 +85,9 @@ contract("PlasmaFramework - MVP flow", accounts => {
     });
 
     it("should finalize exit", async () => {
-      const aliceBalanceBeforeFinalization = await web3.eth.getBalance(alice);
+      const aliceBalanceBeforeFinalization = new BN(await web3.eth.getBalance(alice), 10);
       const tx = await plasma.processExits();
-      const aliceBalancePostFinalization = await web3.eth.getBalance(alice);
-      assert.equal(parseInt(aliceBalanceBeforeFinalization) + DepositValue, parseInt(aliceBalancePostFinalization))
+      const aliceBalancePostFinalization = new BN(await web3.eth.getBalance(alice), 10);
+      assert(aliceBalancePostFinalization.sub(aliceBalanceBeforeFinalization).eq(new BN(DepositValue, 10)));
     });
 })
