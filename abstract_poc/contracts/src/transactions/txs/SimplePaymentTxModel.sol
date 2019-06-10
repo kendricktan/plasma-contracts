@@ -27,7 +27,6 @@ library SimplePaymentTxModel {
         uint256 txType;
         TxInputModel.TxInput[MAX_INPUT] inputs;
         PaymentOutputModel.TxOutput[MAX_OUPUT] outputs;
-        Witness[MAX_INPUT] witnesses;
         MetaData metaData;
     }
 
@@ -52,7 +51,7 @@ library SimplePaymentTxModel {
 
     function decode(bytes memory _tx) internal view returns (SimplePaymentTxModel.Tx memory) {
       RLP.RLPItem[] memory rlpTx = _tx.toRLPItem().toList();
-      require(rlpTx.length == 4 || rlpTx.length == 5);
+      require(rlpTx.length == 4 || rlpTx.length == 3, "Invalid encoding of transaction");
 
       uint256 txType = rlpTx[0].toUint();
       RLP.RLPItem[] memory inputs = rlpTx[1].toList();
@@ -69,16 +68,17 @@ library SimplePaymentTxModel {
       PaymentOutputModel.TxOutput memory output = outputs[0].decodeOutput();
       decodedTx.outputs[0] = output;
 
-      RLP.RLPItem[] memory witnesses = rlpTx[3].toList();
-      require(witnesses.length == 1, "to many witnesses for simple payment transaction");
-      decodedTx.witnesses[0] = Witness(witnesses[0].toBytes());
-
-      if (rlpTx.length == 5) {
-          decodedTx.metaData = MetaData(rlpTx[4].toBytes32());
+      if (rlpTx.length == 4) {
+          decodedTx.metaData = MetaData(rlpTx[3].toBytes32());
       } else {
           decodedTx.metaData = MetaData("");
       }
 
       return decodedTx;
+    }
+
+    function decodeWitness(bytes memory _witness) internal view returns (Witness memory) {
+      bytes memory witness = _witness.toRLPItem().toBytes();
+      return Witness(_witness);
     }
 }

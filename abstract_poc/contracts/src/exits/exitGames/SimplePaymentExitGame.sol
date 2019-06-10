@@ -39,6 +39,7 @@ contract SimplePaymentExitGame {
 
         // If we are using ABIEncoderV2, I think we can even pass in the struct directly instead of bytes then there is no need to decode (?)
         SimplePaymentTxModel.Tx memory outputTx = SimplePaymentTxModel.decode(_outputTx);
+        require(msg.sender == outputTx.outputs[0].outputData.owner);
 
         uint256 exitId = uint(_utxoPos); // This does not work with IFE, temp for prototype
         uint256 exitableAt = block.timestamp; // Need to add a period, for prototype we make it insecure
@@ -47,6 +48,7 @@ contract SimplePaymentExitGame {
         framework.enqueue(priority, exit);
 
         uint256 outputIndex = 0; // simple payment tx only have 1 input and output. Otherwise should parse this from _utxoPos
+
         SimplePaymentExitDataModel.Data memory exitData = SimplePaymentExitDataModel.Data({
             exitId: exitId,
             exitType: STANDARD_EXIT_TYPE,
@@ -66,6 +68,7 @@ contract SimplePaymentExitGame {
         uint192 _standardExitId,
         bytes calldata _output,
         bytes calldata _challengeTx,
+        bytes calldata _witness,
         uint256 _challengeTxType,
         uint8 _inputIndex
     ) external {
@@ -77,7 +80,8 @@ contract SimplePaymentExitGame {
         require(exitData.outputHash == keccak256(_output), "The output does not match the exit output");
 
         OutputPredicate predicate = framework.getOutputPredicate(PaymentOutputModel.getOutputType(), _challengeTxType);
-        require(predicate.canUseTxOutput(_output, _challengeTx, _inputIndex), "The output is not able to be used in the challenge tx");
+
+        require(predicate.canUseTxOutput(_output, _challengeTx, _inputIndex, _witness), "The output can not be used in the challenge transaction");
 
         exitData.exitable = false;
         framework.setBytesStorage(TX_TYPE, bytes32(exitId), abi.encode(exitData));

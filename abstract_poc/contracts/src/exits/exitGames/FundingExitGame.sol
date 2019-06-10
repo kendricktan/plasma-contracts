@@ -24,7 +24,7 @@ contract FundingExitGame {
         exitProcessor = _exitProcessor;
     }
 
-    function startExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof) external {
+    function startExit(uint192 _utxoPos, bytes calldata _outputTx, bytes calldata _outputTxInclusionProof, bytes calldata _witnesses) external {
         //TODO: check inclusion proof
 
         // If we are using ABIEncoderV2, I think we can even pass in the struct directly instead of bytes then there is no need to decode (?)
@@ -54,6 +54,7 @@ contract FundingExitGame {
         uint192 _standardExitId,
         bytes calldata _output,
         bytes calldata _challengeTx,
+        bytes calldata _witness,
         uint256 _challengeTxType,
         uint8 _inputIndex
     ) external {
@@ -65,7 +66,7 @@ contract FundingExitGame {
 
         OutputPredicate predicate = framework.getOutputPredicate(DexOutputModel.getOutputType(), _challengeTxType);
         require(address(predicate) != address(0), "Predicate for the output type and consume tx type does not exists");
-        require(predicate.canUseTxOutput(_output, _challengeTx, _inputIndex), "The output is not able to be used in the challenge tx");
+        require(predicate.canUseTxOutput(_output, _challengeTx, _inputIndex, _witness), "The output is not able to be used in the challenge tx");
 
         exitData.exitable = false;
         framework.setBytesStorage(TX_TYPE, bytes32(exitId), abi.encode(exitData));

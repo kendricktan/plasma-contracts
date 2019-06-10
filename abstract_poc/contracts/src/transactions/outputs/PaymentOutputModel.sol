@@ -36,6 +36,11 @@ library PaymentOutputModel {
         return keccak256(abi.encode(_output));
     }
 
+    function decodeOutput(bytes memory encoded) internal pure returns (TxOutput memory) {
+        RLP.RLPItem memory rlpEncoded = encoded.toRLPItem();
+        return decodeOutput(rlpEncoded);
+    }
+
     function decodeOutput(RLP.RLPItem memory encoded) internal pure returns (TxOutput memory) {
       RLP.RLPItem[] memory output = encoded.toList();
       require(output.length == 2, "invalid output encoding");

@@ -43,8 +43,7 @@ const DepositInput = new TransactionInput(0, 0, 0);
 
 function deposit(amount, owner, tokenAddress = EthAddress) {
   const txOutput = new TransactionOutput(DepositOutputType, amount, owner, tokenAddress);
-  //TODO: use proper sig
-  const deposit = new SimplePaymentTransaction([DepositInput], [txOutput], [new Witness("signature")]);
+  const deposit = new SimplePaymentTransaction([DepositInput], [txOutput]);
   return deposit.rlpEncoded();
 }
 

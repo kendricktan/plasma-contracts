@@ -66,7 +66,7 @@ contract("PlasmaFramework - MVP flow", accounts => {
     it("should run simple payment exit game", async () => {
         const txInput = new TransactionInput(1, 0, 0);
         const txOutput = new TransactionOutput(2, DepositValue, alice, EthAddress)
-        const transaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")])
+        const transaction = new SimplePaymentTransaction([txInput], [txOutput])
         const block = new Block([transaction]);
         await plasma.submitBlock(block.getRoot());
 
@@ -97,7 +97,8 @@ contract("PlasmaFramework - MVP flow", accounts => {
 
       let txInput = new TransactionInput(1001, 0, 0);
       let txOutput = new TransactionOutput(1, DepositValue, alice, EthAddress);
-      const exitingTransaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")]);
+      const exitingTransaction = new SimplePaymentTransaction([txInput], [txOutput]);
+      exitingTransaction.sign(alice);
       let block = new Block([exitingTransaction]);
       await plasma.submitBlock(block.getRoot());
 
@@ -106,7 +107,5 @@ contract("PlasmaFramework - MVP flow", accounts => {
       const spendingTransaction = new SimplePaymentTransaction([txInput], [txOutput], [new Witness("signature")]);
       block = new Block([spendingTransaction]);
       await plasma.submitBlock(block.getRoot());
-
-      
     });
 })

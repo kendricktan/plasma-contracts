@@ -39,11 +39,10 @@ class Witness {
 }
 
 class Transaction {
-  constructor(transactionType, inputs, outputs, witnesses, metaData = NullData) {
+  constructor(transactionType, inputs, outputs, metaData = NullData) {
     this.transactionType = transactionType;
     this.inputs = inputs;
     this.outputs = outputs;
-    this.witnesses = witnesses;
     this.metaData = metaData;
   }
 
@@ -52,7 +51,6 @@ class Transaction {
 
     tx.push(Transaction.formatForRlpEncoding(this.inputs));
     tx.push(Transaction.formatForRlpEncoding(this.outputs));
-    tx.push(Transaction.formatForRlpEncoding(this.witnesses));
     tx.push(this.metaData);
 
     return rlp.encode(tx);
@@ -61,23 +59,37 @@ class Transaction {
   static formatForRlpEncoding(items) {
     return items.map(item => item.formatForRlpEncoding());
   }
+
+  sign(signature) {
+  }
 }
 
 class SimplePaymentTransaction extends Transaction {
-  constructor(inputs, outputs, witnesses, metaData = NullData) {
-    super(1, inputs, outputs, witnesses, metaData);
+  constructor(inputs, outputs, metaData = NullData) {
+    super(1, inputs, outputs, metaData);
+  }
+
+  sign(spender) {
+    const tx = [this.transactionType];
+
+    tx.push(Transaction.formatForRlpEncoding(this.inputs));
+    tx.push(Transaction.formatForRlpEncoding(this.outputs));
+    tx.push(this.metaData);
+
+    const encoded = rlp.encode(tx);
+    return web3.utils.sha3(encoded);
   }
 }
 
 class FundingTransaction extends Transaction {
-  constructor(inputs, outputs, witnesses, metaData = NullData) {
-    super(2, inputs, outputs, witnesses, metaData);
+  constructor(inputs, outputs, metaData = NullData) {
+    super(2, inputs, outputs, metaData);
   }
 }
 
 class BatchSettlementTransaction extends Transaction {
-  constructor(inputs, outputs, witnesses, metaData = NullData) {
-    super(3, inputs, outputs, witnesses, metaData);
+  constructor(inputs, outputs, metaData = NullData) {
+    super(3, inputs, outputs, metaData);
   }
 }
 
