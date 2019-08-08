@@ -16,9 +16,7 @@ import "../../../utils/OnlyWithValue.sol";
 
 contract PaymentStandardExitRouter is
     IExitProcessor,
-    OnlyWithValue,
-    OutputGuardParserRegistry,
-    PaymentSpendingConditionRegistry
+    OnlyWithValue
 {
     using PaymentStartStandardExit for PaymentStartStandardExit.Controller;
     using PaymentChallengeStandardExit for PaymentChallengeStandardExit.Controller;

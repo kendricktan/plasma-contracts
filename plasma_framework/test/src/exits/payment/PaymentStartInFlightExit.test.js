@@ -1,12 +1,15 @@
+const ExitId = artifacts.require('ExitIdWrapper');
+const ExitableTimestamp = artifacts.require('ExitableTimestampWrapper');
+const IsDeposit = artifacts.require('IsDepositWrapper');
+const OutputGuardParserRegistry = artifacts.require('OutputGuardParserRegistry');
 const PaymentInFlightExitRouter = artifacts.require('PaymentInFlightExitRouterMock');
 const PaymentStartInFlightExit = artifacts.require('PaymentStartInFlightExit');
+const PaymentPiggybackInFlightExitOnInput = artifacts.require('PaymentPiggybackInFlightExitOnInput');
+const PaymentPiggybackInFlightExitOnOutput = artifacts.require('PaymentPiggybackInFlightExitOnOutput');
 const PaymentSpendingConditionRegistry = artifacts.require('PaymentSpendingConditionRegistry');
 const PaymentSpendingConditionFalse = artifacts.require('PaymentSpendingConditionFalse');
 const PaymentSpendingConditionTrue = artifacts.require('PaymentSpendingConditionTrue');
 const SpyPlasmaFramework = artifacts.require('SpyPlasmaFrameworkForExitGame');
-const ExitId = artifacts.require('ExitIdWrapper');
-const IsDeposit = artifacts.require('IsDepositWrapper');
-const ExitableTimestamp = artifacts.require('ExitableTimestampWrapper');
 
 const {
     BN, constants, expectEvent, expectRevert, time,
@@ -42,7 +45,11 @@ contract('PaymentInFlightExitRouter', ([_, alice, bob, carol]) => {
 
     before('deploy and link with controller lib', async () => {
         const startInFlightExit = await PaymentStartInFlightExit.new();
+        const piggybackInFlightExitOnInput = await PaymentPiggybackInFlightExitOnInput.new();
+        const piggybackInFlightExitOnOutput = await PaymentPiggybackInFlightExitOnOutput.new();
         await PaymentInFlightExitRouter.link('PaymentStartInFlightExit', startInFlightExit.address);
+        await PaymentInFlightExitRouter.link('PaymentPiggybackInFlightExitOnInput', piggybackInFlightExitOnInput.address);
+        await PaymentInFlightExitRouter.link('PaymentPiggybackInFlightExitOnOutput', piggybackInFlightExitOnOutput.address);
     });
 
     describe('startInFlightExit', () => {
@@ -126,7 +133,7 @@ contract('PaymentInFlightExitRouter', ([_, alice, bob, carol]) => {
 
         function expectInput(input, inputTx) {
             expect(new BN(input.amount)).to.be.bignumber.equal(new BN(inputTx.outputs[0].amount));
-            expect(input.outputGuard.toUpperCase()).to.equal(inputTx.outputs[0].outputGuard.toUpperCase());
+            expect(addressToOutputGuard(input.exitTarget)).to.equal(inputTx.outputs[0].outputGuard);
             expect(input.token).to.equal(inputTx.outputs[0].token);
         }
 
@@ -147,8 +154,10 @@ contract('PaymentInFlightExitRouter', ([_, alice, bob, carol]) => {
                     MIN_EXIT_PERIOD, DUMMY_INITIAL_IMMUNE_VAULTS_NUM, INITIAL_IMMUNE_EXIT_GAME_NUM,
                 );
                 this.spendingConditionRegistry = await PaymentSpendingConditionRegistry.new();
+                const outputGuardParserRegistry = await OutputGuardParserRegistry.new();
+
                 this.exitGame = await PaymentInFlightExitRouter.new(
-                    this.framework.address, this.spendingConditionRegistry.address,
+                    this.framework.address, outputGuardParserRegistry.address, this.spendingConditionRegistry.address,
                 );
 
                 const { args, argsDecoded, inputTxsBlockRoot } = buildValidIfeStartArgs(
@@ -234,8 +243,9 @@ contract('PaymentInFlightExitRouter', ([_, alice, bob, carol]) => {
                     MIN_EXIT_PERIOD, DUMMY_INITIAL_IMMUNE_VAULTS_NUM, INITIAL_IMMUNE_EXIT_GAME_NUM,
                 );
                 this.spendingConditionRegistry = await PaymentSpendingConditionRegistry.new();
+                const outputGuardParserRegistry = await OutputGuardParserRegistry.new();
                 this.exitGame = await PaymentInFlightExitRouter.new(
-                    this.framework.address, this.spendingConditionRegistry.address,
+                    this.framework.address, outputGuardParserRegistry.address, this.spendingConditionRegistry.address,
                 );
             });
 
