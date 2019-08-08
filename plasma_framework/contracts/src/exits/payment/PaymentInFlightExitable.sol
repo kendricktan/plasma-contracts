@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "./PaymentExitDataModel.sol";
 import "./spendingConditions/IPaymentSpendingCondition.sol";
 import "./spendingConditions/PaymentSpendingConditionRegistry.sol";
+import "../IStateTransitionVerifier.sol";
 import "../utils/ExitId.sol";
 import "../utils/ExitableTimestamp.sol";
 import "../utils/OutputId.sol";
@@ -15,6 +16,7 @@ import "../../utils/OnlyWithValue.sol";
 import "../../utils/UtxoPosLib.sol";
 import "../../utils/Merkle.sol";
 import "../../transactions/PaymentTransactionModel.sol";
+import "../../transactions/WireTransaction.sol";
 import "../../transactions/outputs/PaymentOutputModel.sol";
 
 contract PaymentInFlightExitable is
@@ -34,6 +36,7 @@ contract PaymentInFlightExitable is
     mapping (uint192 => PaymentExitDataModel.InFlightExit) public inFlightExits;
 
     PlasmaFramework private framework;
+    IStateTransitionVerifier private transitionVerifier;
     IsDeposit.Predicate private isDeposit;
     ExitableTimestamp.Calculator private exitableTimestampCalculator;
 
@@ -66,9 +69,9 @@ contract PaymentInFlightExitable is
      * @param inFlightTxRaw In-flight transaction as bytes.
      * @param inFlightTx Decoded in-flight transaction.
      * @param inFlightTxHash Hash of in-flight transaction.
-     * @param inputTxsRaw Input transactions as bytes.
-     * @param inputTxs Decoded input transactions.
+     * @param inputTxs Input transactions as bytes.
      * @param inputUtxosPos Postions of input utxos.
+     * @param inputUtxosPos Postions of input utxos coded as integers.
      * @param inputUtxosTypes Types of outputs that make in-flight transaction inputs.
      * @param inputTxsInclusionProofs Merkle proofs for input transactions.
      * @param inFlightTxWitnesses Witnesses for in-flight transactions.
@@ -79,17 +82,18 @@ contract PaymentInFlightExitable is
         bytes inFlightTxRaw;
         PaymentTransactionModel.Transaction inFlightTx;
         bytes32 inFlightTxHash;
-        bytes[] inputTxsRaw;
-        PaymentTransactionModel.Transaction[] inputTxs;
+        bytes[] inputTxs;
         UtxoPosLib.UtxoPos[] inputUtxosPos;
+        uint256[] inputUtxosPosRaw;
         uint256[] inputUtxosTypes;
         bytes[] inputTxsInclusionProofs;
         bytes[] inFlightTxWitnesses;
         bytes32[] outputIds;
     }
 
-    constructor(PlasmaFramework _framework) public {
+    constructor(PlasmaFramework _framework, IStateTransitionVerifier _transitionVerifier) public {
         framework = _framework;
+        transitionVerifier = _transitionVerifier;
         isDeposit = IsDeposit.Predicate(framework.CHILD_BLOCK_INTERVAL());
         exitableTimestampCalculator = ExitableTimestamp.Calculator(framework.minExitPeriod());
     }
@@ -114,32 +118,24 @@ contract PaymentInFlightExitable is
         exitData.inFlightTxRaw = args.inFlightTx;
         exitData.inFlightTx = PaymentTransactionModel.decode(args.inFlightTx);
         exitData.inFlightTxHash = keccak256(args.inFlightTx);
-        exitData.inputTxsRaw = args.inputTxs;
-        exitData.inputTxs = decodeInputTxs(exitData.inputTxsRaw);
+        exitData.inputTxs = args.inputTxs;
         exitData.inputUtxosPos = decodeInputTxsPositions(args.inputUtxosPos);
+        exitData.inputUtxosPosRaw = args.inputUtxosPos;
         exitData.inputUtxosTypes = args.inputUtxosTypes;
         exitData.inputTxsInclusionProofs = args.inputTxsInclusionProofs;
         exitData.inFlightTxWitnesses = args.inFlightTxWitnesses;
-        exitData.outputIds = getOutputIds(exitData.inputTxsRaw, exitData.inputUtxosPos);
+        exitData.outputIds = getOutputIds(exitData.inputTxs, exitData.inputUtxosPos);
         return exitData;
     }
 
     function decodeInputTxsPositions(uint256[] memory inputUtxosPos) private pure returns (UtxoPosLib.UtxoPos[] memory) {
-        require(inputUtxosPos.length <= MAX_INPUT_NUM, "To many input transactions provided");
+        require(inputUtxosPos.length <= MAX_INPUT_NUM, "To many transactions provided");
 
         UtxoPosLib.UtxoPos[] memory utxosPos = new UtxoPosLib.UtxoPos[](inputUtxosPos.length);
         for (uint i = 0; i < inputUtxosPos.length; i++) {
             utxosPos[i] = UtxoPosLib.UtxoPos(inputUtxosPos[i]);
         }
         return utxosPos;
-    }
-
-    function decodeInputTxs(bytes[] memory inputTxsRaw) private pure returns (PaymentTransactionModel.Transaction[] memory) {
-        PaymentTransactionModel.Transaction[] memory inputTxs = new PaymentTransactionModel.Transaction[](inputTxsRaw.length);
-        for (uint i = 0; i < inputTxsRaw.length; i++) {
-            inputTxs[i] = PaymentTransactionModel.decode(inputTxsRaw[i]);
-        }
-        return inputTxs;
     }
 
     function getOutputIds(bytes[] memory inputTxs, UtxoPosLib.UtxoPos[] memory utxoPos) private view returns (bytes32[] memory) {
@@ -159,8 +155,11 @@ contract PaymentInFlightExitable is
         verifyNumberOfInputsMatchesNumberOfInFlightTransactionInputs(exitData);
         verifyNoInputSpentMoreThanOnce(exitData.inFlightTx);
         verifyInputTransactionsInludedInPlasma(exitData);
-        verifyInputsSpendingCondition(exitData);
-        verifyInFlightTransactionDoesNotOverspend(exitData);
+        verifyInputsSpent(exitData);
+         require(
+            transitionVerifier.isCorrectStateTransition(exitData.inFlightTxRaw, exitData.inputTxs, exitData.inputUtxosPosRaw),
+            "Incorrect state transition"
+        );
     }
 
     function verifyExitNotStarted(uint192 exitId) private view {
@@ -174,10 +173,6 @@ contract PaymentInFlightExitable is
     }
 
     function verifyNumberOfInputsMatchesNumberOfInFlightTransactionInputs(StartExitData memory exitData) private pure {
-        require(
-            exitData.inputTxs.length == exitData.inFlightTx.inputs.length,
-            "Number of input transactions does not match number of in-flight transaction inputs"
-        );
         require(
             exitData.inputUtxosPos.length == exitData.inFlightTx.inputs.length,
             "Number of input transactions positions does not match number of in-flight transaction inputs"
@@ -209,7 +204,7 @@ contract PaymentInFlightExitable is
     function verifyInputTransactionsInludedInPlasma(StartExitData memory exitData) private view {
         for (uint i = 0; i < exitData.inputTxs.length; i++) {
             (bytes32 root, ) = framework.blocks(exitData.inputUtxosPos[i].blockNum());
-            bytes32 leaf = keccak256(exitData.inputTxsRaw[i]);
+            bytes32 leaf = keccak256(exitData.inputTxs[i]);
             require(
                 Merkle.checkMembership(leaf, exitData.inputUtxosPos[i].txIndex(), root, exitData.inputTxsInclusionProofs[i]),
                 "Input transaction is not included in plasma"
@@ -217,10 +212,10 @@ contract PaymentInFlightExitable is
         }
     }
 
-    function verifyInputsSpendingCondition(StartExitData memory exitData) private view {
+    function verifyInputsSpent(StartExitData memory exitData) private view {
         for (uint i = 0; i < exitData.inputTxs.length; i++) {
             uint16 outputIndex = exitData.inputUtxosPos[i].outputIndex();
-            bytes32 outputGuard = exitData.inputTxs[i].outputs[outputIndex].outputGuard;
+            WireTransaction.Output memory output = WireTransaction.getOutput(exitData.inputTxs[i], outputIndex);
 
             //FIXME: consider moving spending conditions to PlasmaFramework
             IPaymentSpendingCondition condition = PaymentSpendingConditionRegistry.spendingConditions(
@@ -228,7 +223,7 @@ contract PaymentInFlightExitable is
             require(address(condition) != address(0), "Spending condition contract not found");
 
             bool isSpentByInFlightTx = condition.verify(
-                outputGuard,
+                output.outputGuard,
                 exitData.inputUtxosPos[i].value,
                 exitData.outputIds[i],
                 exitData.inFlightTxRaw,
@@ -239,53 +234,14 @@ contract PaymentInFlightExitable is
         }
     }
 
-    function verifyInFlightTransactionDoesNotOverspend(StartExitData memory exitData) private pure {
-        PaymentTransactionModel.Transaction memory inFlightTx = exitData.inFlightTx;
-        for (uint i = 0; i < inFlightTx.outputs.length; i++) {
-            address token = inFlightTx.outputs[i].token;
-            uint256 tokenAmountOut = getTokenAmountOut(inFlightTx, token);
-            uint256 tokenAmountIn = getTokenAmountIn(exitData.inputTxs, exitData.inputUtxosPos, token);
-            require(tokenAmountOut <= tokenAmountIn, "Invalid transaction, spends more than provided in inputs");
-        }
-    }
-
-    function getTokenAmountOut(PaymentTransactionModel.Transaction memory inFlightTx, address token) private pure returns (uint256) {
-        uint256 amountOut = 0;
-        for (uint i = 0; i < inFlightTx.outputs.length; i++) {
-            if (inFlightTx.outputs[i].token == token) {
-                amountOut += inFlightTx.outputs[i].amount;
-            }
-        }
-        return amountOut;
-    }
-
-    function getTokenAmountIn(
-        PaymentTransactionModel.Transaction[] memory inputTxs,
-        UtxoPosLib.UtxoPos[] memory inputUtxosPos,
-        address token
-    )
-        private
-        pure
-        returns (uint256)
-    {
-        uint256 amountIn = 0;
-        for (uint i = 0; i < inputTxs.length; i++) {
-            uint16 oindex = inputUtxosPos[i].outputIndex();
-            PaymentOutputModel.Output memory output = inputTxs[i].outputs[oindex];
-            if (output.token == token) {
-                amountIn += output.amount;
-            }
-        }
-        return amountIn;
-    }
-
     function startExit(StartExitData memory startExitData) private {
         PaymentExitDataModel.InFlightExit storage ife = inFlightExits[startExitData.exitId];
         ife.bondOwner = msg.sender;
         ife.position = getYoungestInputUtxoPosition(startExitData.inputUtxosPos);
         ife.exitStartTimestamp = block.timestamp;
-        setInFlightExitInputs(ife, startExitData.inputTxs, startExitData.inputUtxosPos);
-        // output is set during a piggyback
+        setInFlightExitInputs(ife, startExitData);
+        //TODO: I am not sure if we need that, outputIds for ife outputs can be calculated on piggybacks
+        setInFlightExitOutputs(ife, startExitData);
     }
 
     function getYoungestInputUtxoPosition(UtxoPosLib.UtxoPos[] memory inputUtxosPos) private pure returns (uint256) {
@@ -300,14 +256,39 @@ contract PaymentInFlightExitable is
 
     function setInFlightExitInputs(
         PaymentExitDataModel.InFlightExit storage ife,
-        PaymentTransactionModel.Transaction[] memory inputTxs,
-        UtxoPosLib.UtxoPos[] memory inputUtxosPos
+        StartExitData memory exitData
     )
         private
     {
-        for (uint i = 0; i < inputTxs.length; i++) {
-            uint16 outputIndex = inputUtxosPos[i].outputIndex();
-            ife.inputs[i] = inputTxs[i].outputs[outputIndex];
+        for (uint i = 0; i < exitData.inputTxs.length; i++) {
+            uint16 outputIndex = exitData.inputUtxosPos[i].outputIndex();
+            WireTransaction.Output memory output = WireTransaction.getOutput(exitData.inputTxs[i], outputIndex);
+
+            ife.inputs[i] = PaymentExitDataModel.WithdrawData(
+                output.outputGuard,
+                exitData.outputIds[i],
+                output.token,
+                output.amount
+            );
+        }
+    }
+
+    function setInFlightExitOutputs(
+        PaymentExitDataModel.InFlightExit storage ife,
+        StartExitData memory exitData
+    )
+        private
+    {
+        for (uint i = 0; i < exitData.inFlightTx.outputs.length; i++) {
+            bytes32 outputId = OutputId.computeNormalOutputId(exitData.inFlightTxRaw, i);
+            PaymentOutputModel.Output memory output = exitData.inFlightTx.outputs[i];
+
+            ife.inputs[i] = PaymentExitDataModel.WithdrawData(
+                output.outputGuard,
+                outputId,
+                output.token,
+                output.amount
+            );
         }
     }
 }
