@@ -15,12 +15,12 @@ contract PaymentInFlightExitableMock is PaymentInFlightExitable {
         inFlightExits[exitId].exitStartTimestamp = 1;
         inFlightExits[exitId].exitMap = Bits.setBit(inFlightExits[exitId].exitMap, 255);
     }
-
+/*
     function getInFlightExitInput(uint192 exitId, uint8 inputIndex) public view returns (PaymentOutputModel.Output memory) {
         return inFlightExits[exitId].inputs[inputIndex];
     }
 
     function getInFlightExitOutput(uint192 exitId, uint8 outputIndex) public view returns (PaymentOutputModel.Output memory) {
         return inFlightExits[exitId].outputs[outputIndex];
-    }
+    }*/
 }
