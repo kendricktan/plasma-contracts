@@ -42,7 +42,7 @@ contract PaymentOutputToPaymentTxCondition is IPaymentSpendingCondition {
         require(spendingTx.txType == PAYMENT_TX_TYPE, "The spending tx is not of payment tx type");
         require(
             spendingTx.inputs[_inputIndex] == _outputIdentifier, 
-            "The spending tx does not spend the output specified by _outputIdentifier"
+            "The spending tx does not spend the output specified by output identifier."
         );
 
         address payable owner = AddressPayable.convert(address(uint256(_outputGuard)));
