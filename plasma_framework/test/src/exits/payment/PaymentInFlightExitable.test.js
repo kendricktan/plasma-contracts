@@ -16,7 +16,7 @@ const { buildUtxoPos, UtxoPos } = require('../../../helpers/positions.js');
 const {
     addressToOutputGuard, computeNormalOutputId, spentOnGas,
 } = require('../../../helpers/utils.js');
-const { PaymentTransactionOutput, PaymentTransaction } = require('../../../helpers/transaction.js');
+const { PaymentTransactionOutput, PaymentTransaction, PlasmaDepositTransaction } = require('../../../helpers/transaction.js');
 
 contract('PaymentInFlightExitable', ([_, alice, bob, carol]) => {
     const IN_FLIGHT_EXIT_BOND = 31415926535; // wei
@@ -40,9 +40,8 @@ contract('PaymentInFlightExitable', ([_, alice, bob, carol]) => {
 
     describe('startInFlightExit', () => {
         function buildValidIfeStartArgs(amount, [ifeOwner, inputOwner1, inputOwner2], blockNum) {
-            // TODO: make one of those a deposit transaction
             const inputTx1 = createInputTransaction(DUMMY_INPUT_1, inputOwner1, amount);
-            const inputTx2 = createInputTransaction(DUMMY_INPUT_2, inputOwner2, amount);
+            const inputTx2 = createDepositTransaction(inputOwner2, amount);
             const inputTxs = [inputTx1, inputTx2];
 
             const inputUtxosPos = [buildUtxoPos(blockNum, 0, 0), buildUtxoPos(blockNum, 1, 0)];
@@ -92,6 +91,11 @@ contract('PaymentInFlightExitable', ([_, alice, bob, carol]) => {
         function createInputTransaction(input, owner, amount, token = ETH) {
             const output = new PaymentTransactionOutput(amount, addressToOutputGuard(owner), token);
             return new PaymentTransaction(IFE_TX_TYPE, [input], [output]);
+        }
+
+        function createDepositTransaction(owner, amount, token = ETH) {
+            const output = new PaymentTransactionOutput(amount, addressToOutputGuard(owner), token);
+            return new PlasmaDepositTransaction(output);
         }
 
         function createInFlightTx(inputTxs, inputUtxosPos, ifeOwner, amount, token = ETH) {
