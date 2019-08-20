@@ -176,7 +176,7 @@ contract('PaymentInFlightExitable', ([_, alice, bob, carol]) => {
                 );
             });
 
-            it.only('should store in-flight exit data', async () => {
+            it('should store in-flight exit data', async () => {
                 const ethBlockTime = await time.latest();
                 await this.exitGame.startInFlightExit(
                     this.args,
