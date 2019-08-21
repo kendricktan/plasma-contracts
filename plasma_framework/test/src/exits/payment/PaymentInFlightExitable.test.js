@@ -40,9 +40,19 @@ contract('PaymentInFlightExitable', ([_, alice, bob, carol]) => {
     const TOLERANCE_SECONDS = new BN(1);
 
     describe('startInFlightExit', () => {
+        function isDeposit(blockNum) {
+            return blockNum % CHILD_BLOCK_INTERVAL !== 0;
+        }
+
         function buildValidIfeStartArgs(amount, [ifeOwner, inputOwner1, inputOwner2], blockNum1, blockNum2) {
-            const inputTx1 = createInputTransaction(DUMMY_INPUT_1, inputOwner1, amount);
-            const inputTx2 = createDepositTransaction(inputOwner2, amount);
+            const inputTx1 = isDeposit(blockNum1)
+                ? createDepositTransaction(inputOwner1, amount)
+                : createInputTransaction(DUMMY_INPUT_1, inputOwner1, amount);
+
+            const inputTx2 = isDeposit(blockNum2)
+                ? createDepositTransaction(inputOwner2, amount)
+                : createInputTransaction(DUMMY_INPUT_2, inputOwner2, amount);
+
             const inputTxs = [inputTx1, inputTx2];
 
             const inputUtxosPos = [buildUtxoPos(blockNum1, 0, 0), buildUtxoPos(blockNum2, 0, 0)];
